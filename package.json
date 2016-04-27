@@ -1,4 +1,8 @@
 {
   "name": "appengine-python-sdk",
-  "version": "1.9.36"
+  "version": "1.9.36",
+  "keywords": [
+    "google",
+    "appengine"
+  ]
 }
