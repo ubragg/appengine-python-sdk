@@ -94,10 +94,10 @@ if __name__ == '__main__':
 		run("git add --all && git commit -m \"%s\"" % remote_version)
 
 	if "--tag" in sys.argv:
-		run("git tag -m \"%s\"" % remote_version)
+		run("git tag %s -a -m %s" % (remote_version, remote_version))
 
 	if "--push" in sys.argv:
-		run("git push --tags")
+		run("git push && git push --tags")
 
 	if "--publish" in sys.argv:
 		run("npm publish")
