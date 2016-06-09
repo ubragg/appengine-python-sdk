@@ -9,6 +9,19 @@ import os
 import subprocess
 import xml.etree.ElementTree as ET
 
+def run(cmd):
+	p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+
+	while True:
+		line = p.stdout.readline()
+
+		print line.rstrip()
+
+		if line == '':
+			break
+
+	if p.returncode > 0:
+		raise Exception("command failed with returncode %s: %s" % (p.returncode, cmd))
 
 def get_local_version():
 	with open("package.json", "r") as f:
@@ -24,8 +37,8 @@ def set_local_version(version):
 		package = json.load(f)
 		package["version"] = version
 		f.seek(0)
-	    json.dump(package, f, indent=2)
-	    f.truncate()
+		json.dump(package, f, indent=2)
+		f.truncate()
 
 def get_remote_version():
 	versions = []
@@ -77,14 +90,14 @@ if __name__ == '__main__':
 
 		set_local_version(remote_version)
 
-		if "--commit" in sys.argv:
-			subprocess.check_call("git add --all && git commit -m \"%s\"" % remote_version, shell=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
+	if "--commit" in sys.argv:
+		run("git add --all && git commit -m \"%s\"" % remote_version)
 
-		if "--tag" in sys.argv:
-			subprocess.check_call("git tag -m \"%s\"" % remote_version, shell=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
+	if "--tag" in sys.argv:
+		run("git tag -m \"%s\"" % remote_version)
 
-		if "--push" in sys.argv:
-			subprocess.check_call("git push --tags", shell=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
+	if "--push" in sys.argv:
+		run("git push --tags")
 
-		if "--publish" in sys.argv:
-			subprocess.check_call("npm publish", shell=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
+	if "--publish" in sys.argv:
+		run("npm publish")
