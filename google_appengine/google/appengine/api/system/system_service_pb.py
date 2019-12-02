@@ -18,11 +18,19 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+import base64
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+try:
+  _net_proto___parse__python = None
+except ImportError:
+  _net_proto___parse__python = None
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -58,6 +66,33 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
 
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.SystemServiceError', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.SystemServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.SystemServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.SystemServiceError', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.SystemServiceError', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.SystemServiceError', s)
+
+
   def Equals(self, x):
     if x is self: return 1
     return 1
@@ -88,7 +123,7 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -98,7 +133,7 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -113,6 +148,12 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SystemServiceError'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSARBCQUNLRU5EX1JFUVVJUkVEmAECjAGLAZIBDUxJTUlUX1JFQUNIRUSYAQOMAXS6AaUECiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8SCmFwcGhvc3RpbmciZgoSU3lzdGVtU2VydmljZUVycm9yIlAKCUVycm9yQ29kZRIGCgJPSxAAEhIKDklOVEVSTkFMX0VSUk9SEAESFAoQQkFDS0VORF9SRVFVSVJFRBACEhEKDUxJTUlUX1JFQUNIRUQQAyJ0CgpTeXN0ZW1TdGF0Eg8KB2N1cnJlbnQYASABKAESEQoJYXZlcmFnZTFtGAMgASgBEhIKCmF2ZXJhZ2UxMG0YBCABKAESDQoFdG90YWwYAiABKAESDgoGcmF0ZTFtGAUgASgBEg8KB3JhdGUxMG0YBiABKAEiFwoVR2V0U3lzdGVtU3RhdHNSZXF1ZXN0ImUKFkdldFN5c3RlbVN0YXRzUmVzcG9uc2USIwoDY3B1GAEgASgLMhYuYXBwaG9zdGluZy5TeXN0ZW1TdGF0EiYKBm1lbW9yeRgCIAEoCzIWLmFwcGhvc3RpbmcuU3lzdGVtU3RhdCIfCh1TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVxdWVzdCI0Ch5TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCUI2Ch9jb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuc3lzdGVtEAIoAkIPU3lzdGVtU2VydmljZVBi"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class SystemStat(ProtocolBuffer.ProtocolMessage):
   has_current_ = 0
   current_ = 0.0
@@ -217,6 +258,33 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     if (x.has_total()): self.set_total(x.total())
     if (x.has_rate1m()): self.set_rate1m(x.rate1m())
     if (x.has_rate10m()): self.set_rate10m(x.rate10m())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.SystemStat', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.SystemStat')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.SystemStat')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.SystemStat', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.SystemStat', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.SystemStat', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -329,7 +397,7 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -345,7 +413,7 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcurrent = 1
   kaverage1m = 3
@@ -378,6 +446,12 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SystemStat'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KFWFwcGhvc3RpbmcuU3lzdGVtU3RhdBMaB2N1cnJlbnQgASgBMAE4ARQTGglhdmVyYWdlMW0gAygBMAE4ARQTGgphdmVyYWdlMTBtIAQoATABOAEUExoFdG90YWwgAigBMAE4ARQTGgZyYXRlMW0gBSgBMAE4ARQTGgdyYXRlMTBtIAYoATABOAEUwgEdYXBwaG9zdGluZy5TeXN0ZW1TZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -387,6 +461,33 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.GetSystemStatsRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.GetSystemStatsRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.GetSystemStatsRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.GetSystemStatsRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.GetSystemStatsRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.GetSystemStatsRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -418,7 +519,7 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -428,7 +529,7 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -443,6 +544,12 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSystemStatsRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXF1ZXN0wgEdYXBwaG9zdGluZy5TeXN0ZW1TZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   has_cpu_ = 0
   cpu_ = None
@@ -450,7 +557,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   memory_ = None
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def cpu(self):
@@ -496,6 +603,33 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_cpu()): self.mutable_cpu().MergeFrom(x.cpu())
     if (x.has_memory()): self.mutable_memory().MergeFrom(x.memory())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.GetSystemStatsResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.GetSystemStatsResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.GetSystemStatsResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.GetSystemStatsResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.GetSystemStatsResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.GetSystemStatsResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -564,7 +698,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -582,7 +716,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcpu = 1
   kmemory = 2
@@ -603,6 +737,12 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSystemStatsResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KIWFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXNwb25zZRMaA2NwdSABKAIwCzgBShVhcHBob3N0aW5nLlN5c3RlbVN0YXSjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoGbWVtb3J5IAIoAjALOAFKFWFwcGhvc3RpbmcuU3lzdGVtU3RhdKMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLlN5c3RlbVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -612,6 +752,33 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.StartBackgroundRequestRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.StartBackgroundRequestRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.StartBackgroundRequestRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.StartBackgroundRequestRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.StartBackgroundRequestRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.StartBackgroundRequestRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -643,7 +810,7 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -653,7 +820,7 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -668,6 +835,12 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StartBackgroundRequestRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlcXVlc3TCAR1hcHBob3N0aW5nLlN5c3RlbVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   has_request_id_ = 0
   request_id_ = ""
@@ -692,6 +865,33 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_request_id()): self.set_request_id(x.request_id())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.StartBackgroundRequestResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.StartBackgroundRequestResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.StartBackgroundRequestResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.StartBackgroundRequestResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.StartBackgroundRequestResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.StartBackgroundRequestResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -734,7 +934,7 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -745,7 +945,7 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_id = 1
 
@@ -763,6 +963,12 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StartBackgroundRequestResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KKWFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlc3BvbnNlExoKcmVxdWVzdF9pZCABKAIwCTgBFMIBHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 if _extension_runtime:
   pass
 

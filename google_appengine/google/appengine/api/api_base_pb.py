@@ -18,11 +18,14 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -102,7 +105,7 @@ class StringProto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -113,7 +116,7 @@ class StringProto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -202,7 +205,7 @@ class Integer32Proto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -213,7 +216,7 @@ class Integer32Proto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -302,7 +305,7 @@ class Integer64Proto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -313,7 +316,7 @@ class Integer64Proto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -400,7 +403,7 @@ class BoolProto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -411,7 +414,7 @@ class BoolProto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -498,7 +501,7 @@ class DoubleProto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -509,7 +512,7 @@ class DoubleProto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -598,7 +601,7 @@ class BytesProto(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -609,7 +612,7 @@ class BytesProto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue = 1
 
@@ -667,7 +670,7 @@ class VoidProto(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -677,7 +680,7 @@ class VoidProto(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({

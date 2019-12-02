@@ -1171,8 +1171,8 @@ namespace storage_onestore_v3\Property {
     const GD_RATING = 13;
     const BLOBKEY = 17;
     const ENTITY_PROTO = 19;
-    const INDEX_VALUE = 18;
     const EMPTY_LIST = 24;
+    const INDEX_VALUE = 18;
   }
 }
 namespace storage_onestore_v3 {
@@ -2770,6 +2770,261 @@ namespace storage_onestore_v3 {
     }
   }
 }
+namespace storage_onestore_v3\EntitySummary {
+  class PropertySummary extends \google\net\ProtocolMessage {
+    public function getName() {
+      if (!isset($this->name)) {
+        return '';
+      }
+      return $this->name;
+    }
+    public function setName($val) {
+      $this->name = $val;
+      return $this;
+    }
+    public function clearName() {
+      unset($this->name);
+      return $this;
+    }
+    public function hasName() {
+      return isset($this->name);
+    }
+    public function getPropertyTypeForStats() {
+      if (!isset($this->property_type_for_stats)) {
+        return '';
+      }
+      return $this->property_type_for_stats;
+    }
+    public function setPropertyTypeForStats($val) {
+      $this->property_type_for_stats = $val;
+      return $this;
+    }
+    public function clearPropertyTypeForStats() {
+      unset($this->property_type_for_stats);
+      return $this;
+    }
+    public function hasPropertyTypeForStats() {
+      return isset($this->property_type_for_stats);
+    }
+    public function getSizeBytes() {
+      if (!isset($this->size_bytes)) {
+        return 0;
+      }
+      return $this->size_bytes;
+    }
+    public function setSizeBytes($val) {
+      $this->size_bytes = $val;
+      return $this;
+    }
+    public function clearSizeBytes() {
+      unset($this->size_bytes);
+      return $this;
+    }
+    public function hasSizeBytes() {
+      return isset($this->size_bytes);
+    }
+    public function clear() {
+      $this->clearName();
+      $this->clearPropertyTypeForStats();
+      $this->clearSizeBytes();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->name)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->name));
+      }
+      if (isset($this->property_type_for_stats)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->property_type_for_stats));
+      }
+      if (isset($this->size_bytes)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->size_bytes);
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->name)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->name);
+      }
+      if (isset($this->property_type_for_stats)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->property_type_for_stats);
+      }
+      if (isset($this->size_bytes)) {
+        $out->putVarInt32(24);
+        $out->putVarInt32($this->size_bytes);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setName(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->setPropertyTypeForStats(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 24:
+            $this->setSizeBytes($d->getVarInt32());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->name)) return 'name';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasName()) {
+        $this->setName($x->getName());
+      }
+      if ($x->hasPropertyTypeForStats()) {
+        $this->setPropertyTypeForStats($x->getPropertyTypeForStats());
+      }
+      if ($x->hasSizeBytes()) {
+        $this->setSizeBytes($x->getSizeBytes());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->name) !== isset($x->name)) return false;
+      if (isset($this->name) && $this->name !== $x->name) return false;
+      if (isset($this->property_type_for_stats) !== isset($x->property_type_for_stats)) return false;
+      if (isset($this->property_type_for_stats) && $this->property_type_for_stats !== $x->property_type_for_stats) return false;
+      if (isset($this->size_bytes) !== isset($x->size_bytes)) return false;
+      if (isset($this->size_bytes) && !$this->integerEquals($this->size_bytes, $x->size_bytes)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->name)) {
+        $res .= $prefix . "name: " . $this->debugFormatString($this->name) . "\n";
+      }
+      if (isset($this->property_type_for_stats)) {
+        $res .= $prefix . "property_type_for_stats: " . $this->debugFormatString($this->property_type_for_stats) . "\n";
+      }
+      if (isset($this->size_bytes)) {
+        $res .= $prefix . "size_bytes: " . $this->debugFormatInt32($this->size_bytes) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace storage_onestore_v3 {
+  class EntitySummary extends \google\net\ProtocolMessage {
+    private $large_raw_property = array();
+    public function getLargeRawPropertySize() {
+      return sizeof($this->large_raw_property);
+    }
+    public function getLargeRawPropertyList() {
+      return $this->large_raw_property;
+    }
+    public function mutableLargeRawProperty($idx) {
+      if (!isset($this->large_raw_property[$idx])) {
+        $val = new \storage_onestore_v3\EntitySummary\PropertySummary();
+        $this->large_raw_property[$idx] = $val;
+        return $val;
+      }
+      return $this->large_raw_property[$idx];
+    }
+    public function getLargeRawProperty($idx) {
+      if (isset($this->large_raw_property[$idx])) {
+        return $this->large_raw_property[$idx];
+      }
+      if ($idx >= end(array_keys($this->large_raw_property))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \storage_onestore_v3\EntitySummary\PropertySummary();
+    }
+    public function addLargeRawProperty() {
+      $val = new \storage_onestore_v3\EntitySummary\PropertySummary();
+      $this->large_raw_property[] = $val;
+      return $val;
+    }
+    public function clearLargeRawProperty() {
+      $this->large_raw_property = array();
+    }
+    public function clear() {
+      $this->clearLargeRawProperty();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      $this->checkProtoArray($this->large_raw_property);
+      $res += 1 * sizeof($this->large_raw_property);
+      foreach ($this->large_raw_property as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      $this->checkProtoArray($this->large_raw_property);
+      foreach ($this->large_raw_property as $value) {
+        $out->putVarInt32(10);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addLargeRawProperty()->tryMerge($tmp);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      foreach ($this->large_raw_property as $value) {
+        if (!$value->isInitialized()) return 'large_raw_property';
+      }
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      foreach ($x->getLargeRawPropertyList() as $v) {
+        $this->addLargeRawProperty()->copyFrom($v);
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (sizeof($this->large_raw_property) !== sizeof($x->large_raw_property)) return false;
+      foreach (array_map(null, $this->large_raw_property, $x->large_raw_property) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      foreach ($this->large_raw_property as $value) {
+        $res .= $prefix . "large_raw_property <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
 namespace storage_onestore_v3 {
   class CompositeProperty extends \google\net\ProtocolMessage {
     private $value = array();
@@ -2897,6 +3152,14 @@ namespace storage_onestore_v3 {
     }
   }
 }
+namespace storage_onestore_v3\Index {
+  class Version {
+    const VERSION_UNSPECIFIED = 0;
+    const V1 = 1;
+    const V2 = 2;
+    const V3 = 3;
+  }
+}
 namespace storage_onestore_v3\Index\Property {
   class Direction {
     const DIRECTION_UNSPECIFIED = 0;
@@ -2908,6 +3171,7 @@ namespace storage_onestore_v3\Index\Property {
   class Mode {
     const MODE_UNSPECIFIED = 0;
     const GEOSPATIAL = 3;
+    const ARRAY_CONTAINS = 4;
   }
 }
 namespace storage_onestore_v3\Index {
@@ -3131,10 +3395,46 @@ namespace storage_onestore_v3 {
     public function hasAncestor() {
       return isset($this->ancestor);
     }
+    public function getParent() {
+      if (!isset($this->parent)) {
+        return false;
+      }
+      return $this->parent;
+    }
+    public function setParent($val) {
+      $this->parent = $val;
+      return $this;
+    }
+    public function clearParent() {
+      unset($this->parent);
+      return $this;
+    }
+    public function hasParent() {
+      return isset($this->parent);
+    }
+    public function getVersion() {
+      if (!isset($this->version)) {
+        return 0;
+      }
+      return $this->version;
+    }
+    public function setVersion($val) {
+      $this->version = $val;
+      return $this;
+    }
+    public function clearVersion() {
+      unset($this->version);
+      return $this;
+    }
+    public function hasVersion() {
+      return isset($this->version);
+    }
     public function clear() {
       $this->clearEntityType();
       $this->clearProperty();
       $this->clearAncestor();
+      $this->clearParent();
+      $this->clearVersion();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3149,6 +3449,13 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->ancestor)) {
         $res += 2;
+      }
+      if (isset($this->parent)) {
+        $res += 2;
+      }
+      if (isset($this->version)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->version);
       }
       return $res;
     }
@@ -3167,6 +3474,14 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(40);
         $out->putBoolean($this->ancestor);
       }
+      if (isset($this->parent)) {
+        $out->putVarInt32(56);
+        $out->putBoolean($this->parent);
+      }
+      if (isset($this->version)) {
+        $out->putVarInt32(64);
+        $out->putVarInt32($this->version);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3182,6 +3497,12 @@ namespace storage_onestore_v3 {
             break;
           case 40:
             $this->setAncestor($d->getBoolean());
+            break;
+          case 56:
+            $this->setParent($d->getBoolean());
+            break;
+          case 64:
+            $this->setVersion($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3210,6 +3531,12 @@ namespace storage_onestore_v3 {
       if ($x->hasAncestor()) {
         $this->setAncestor($x->getAncestor());
       }
+      if ($x->hasParent()) {
+        $this->setParent($x->getParent());
+      }
+      if ($x->hasVersion()) {
+        $this->setVersion($x->getVersion());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3221,6 +3548,10 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->ancestor) !== isset($x->ancestor)) return false;
       if (isset($this->ancestor) && $this->ancestor !== $x->ancestor) return false;
+      if (isset($this->parent) !== isset($x->parent)) return false;
+      if (isset($this->parent) && $this->parent !== $x->parent) return false;
+      if (isset($this->version) !== isset($x->version)) return false;
+      if (isset($this->version) && $this->version !== $x->version) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3233,6 +3564,12 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->ancestor)) {
         $res .= $prefix . "ancestor: " . $this->debugFormatBool($this->ancestor) . "\n";
+      }
+      if (isset($this->parent)) {
+        $res .= $prefix . "parent: " . $this->debugFormatBool($this->parent) . "\n";
+      }
+      if (isset($this->version)) {
+        $res .= $prefix . "version: " . ($this->version) . "\n";
       }
       return $res;
     }
@@ -3255,7 +3592,7 @@ namespace storage_onestore_v3\CompositeIndex {
 }
 namespace storage_onestore_v3 {
   class CompositeIndex extends \google\net\ProtocolMessage {
-    private $read_division_family = array();
+    private $deprecated_read_division_family = array();
     public function getAppId() {
       if (!isset($this->app_id)) {
         return '';
@@ -3350,42 +3687,42 @@ namespace storage_onestore_v3 {
     public function hasOnlyUseIfRequired() {
       return isset($this->only_use_if_required);
     }
-    public function getReadDivisionFamilySize() {
-      return sizeof($this->read_division_family);
+    public function getDeprecatedReadDivisionFamilySize() {
+      return sizeof($this->deprecated_read_division_family);
     }
-    public function getReadDivisionFamilyList() {
-      return $this->read_division_family;
+    public function getDeprecatedReadDivisionFamilyList() {
+      return $this->deprecated_read_division_family;
     }
-    public function getReadDivisionFamily($idx) {
-      return $this->read_division_family[$idx];
+    public function getDeprecatedReadDivisionFamily($idx) {
+      return $this->deprecated_read_division_family[$idx];
     }
-    public function setReadDivisionFamily($idx, $val) {
-      $this->read_division_family[$idx] = $val;
+    public function setDeprecatedReadDivisionFamily($idx, $val) {
+      $this->deprecated_read_division_family[$idx] = $val;
       return $this;
     }
-    public function addReadDivisionFamily($val) {
-      $this->read_division_family[] = $val;
+    public function addDeprecatedReadDivisionFamily($val) {
+      $this->deprecated_read_division_family[] = $val;
       return $this;
     }
-    public function clearReadDivisionFamily() {
-      $this->read_division_family = array();
+    public function clearDeprecatedReadDivisionFamily() {
+      $this->deprecated_read_division_family = array();
     }
-    public function getWriteDivisionFamily() {
-      if (!isset($this->write_division_family)) {
+    public function getDeprecatedWriteDivisionFamily() {
+      if (!isset($this->deprecated_write_division_family)) {
         return '';
       }
-      return $this->write_division_family;
+      return $this->deprecated_write_division_family;
     }
-    public function setWriteDivisionFamily($val) {
-      $this->write_division_family = $val;
+    public function setDeprecatedWriteDivisionFamily($val) {
+      $this->deprecated_write_division_family = $val;
       return $this;
     }
-    public function clearWriteDivisionFamily() {
-      unset($this->write_division_family);
+    public function clearDeprecatedWriteDivisionFamily() {
+      unset($this->deprecated_write_division_family);
       return $this;
     }
-    public function hasWriteDivisionFamily() {
-      return isset($this->write_division_family);
+    public function hasDeprecatedWriteDivisionFamily() {
+      return isset($this->deprecated_write_division_family);
     }
     public function getDisabledIndex() {
       if (!isset($this->disabled_index)) {
@@ -3461,8 +3798,8 @@ namespace storage_onestore_v3 {
       $this->clearDefinition();
       $this->clearState();
       $this->clearOnlyUseIfRequired();
-      $this->clearReadDivisionFamily();
-      $this->clearWriteDivisionFamily();
+      $this->clearDeprecatedReadDivisionFamily();
+      $this->clearDeprecatedWriteDivisionFamily();
       $this->clearDisabledIndex();
       $this->clearWorkflowState();
       $this->clearErrorMessage();
@@ -3489,14 +3826,14 @@ namespace storage_onestore_v3 {
       if (isset($this->only_use_if_required)) {
         $res += 2;
       }
-      $this->checkProtoArray($this->read_division_family);
-      $res += 1 * sizeof($this->read_division_family);
-      foreach ($this->read_division_family as $value) {
+      $this->checkProtoArray($this->deprecated_read_division_family);
+      $res += 1 * sizeof($this->deprecated_read_division_family);
+      foreach ($this->deprecated_read_division_family as $value) {
         $res += $this->lengthString(strlen($value));
       }
-      if (isset($this->write_division_family)) {
+      if (isset($this->deprecated_write_division_family)) {
         $res += 1;
-        $res += $this->lengthString(strlen($this->write_division_family));
+        $res += $this->lengthString(strlen($this->deprecated_write_division_family));
       }
       if (isset($this->disabled_index)) {
         $res += 2;
@@ -3537,14 +3874,14 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(48);
         $out->putBoolean($this->only_use_if_required);
       }
-      $this->checkProtoArray($this->read_division_family);
-      foreach ($this->read_division_family as $value) {
+      $this->checkProtoArray($this->deprecated_read_division_family);
+      foreach ($this->deprecated_read_division_family as $value) {
         $out->putVarInt32(58);
         $out->putPrefixedString($value);
       }
-      if (isset($this->write_division_family)) {
+      if (isset($this->deprecated_write_division_family)) {
         $out->putVarInt32(66);
-        $out->putPrefixedString($this->write_division_family);
+        $out->putPrefixedString($this->deprecated_write_division_family);
       }
       if (isset($this->disabled_index)) {
         $out->putVarInt32(72);
@@ -3589,12 +3926,12 @@ namespace storage_onestore_v3 {
             break;
           case 58:
             $length = $d->getVarInt32();
-            $this->addReadDivisionFamily(substr($d->buffer(), $d->pos(), $length));
+            $this->addDeprecatedReadDivisionFamily(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 66:
             $length = $d->getVarInt32();
-            $this->setWriteDivisionFamily(substr($d->buffer(), $d->pos(), $length));
+            $this->setDeprecatedWriteDivisionFamily(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 72:
@@ -3645,11 +3982,11 @@ namespace storage_onestore_v3 {
       if ($x->hasOnlyUseIfRequired()) {
         $this->setOnlyUseIfRequired($x->getOnlyUseIfRequired());
       }
-      foreach ($x->getReadDivisionFamilyList() as $v) {
-        $this->addReadDivisionFamily($v);
+      foreach ($x->getDeprecatedReadDivisionFamilyList() as $v) {
+        $this->addDeprecatedReadDivisionFamily($v);
       }
-      if ($x->hasWriteDivisionFamily()) {
-        $this->setWriteDivisionFamily($x->getWriteDivisionFamily());
+      if ($x->hasDeprecatedWriteDivisionFamily()) {
+        $this->setDeprecatedWriteDivisionFamily($x->getDeprecatedWriteDivisionFamily());
       }
       if ($x->hasDisabledIndex()) {
         $this->setDisabledIndex($x->getDisabledIndex());
@@ -3676,12 +4013,12 @@ namespace storage_onestore_v3 {
       if (isset($this->state) && $this->state !== $x->state) return false;
       if (isset($this->only_use_if_required) !== isset($x->only_use_if_required)) return false;
       if (isset($this->only_use_if_required) && $this->only_use_if_required !== $x->only_use_if_required) return false;
-      if (sizeof($this->read_division_family) !== sizeof($x->read_division_family)) return false;
-      foreach (array_map(null, $this->read_division_family, $x->read_division_family) as $v) {
+      if (sizeof($this->deprecated_read_division_family) !== sizeof($x->deprecated_read_division_family)) return false;
+      foreach (array_map(null, $this->deprecated_read_division_family, $x->deprecated_read_division_family) as $v) {
         if ($v[0] !== $v[1]) return false;
       }
-      if (isset($this->write_division_family) !== isset($x->write_division_family)) return false;
-      if (isset($this->write_division_family) && $this->write_division_family !== $x->write_division_family) return false;
+      if (isset($this->deprecated_write_division_family) !== isset($x->deprecated_write_division_family)) return false;
+      if (isset($this->deprecated_write_division_family) && $this->deprecated_write_division_family !== $x->deprecated_write_division_family) return false;
       if (isset($this->disabled_index) !== isset($x->disabled_index)) return false;
       if (isset($this->disabled_index) && $this->disabled_index !== $x->disabled_index) return false;
       if (isset($this->workflow_state) !== isset($x->workflow_state)) return false;
@@ -3709,11 +4046,11 @@ namespace storage_onestore_v3 {
       if (isset($this->only_use_if_required)) {
         $res .= $prefix . "only_use_if_required: " . $this->debugFormatBool($this->only_use_if_required) . "\n";
       }
-      foreach ($this->read_division_family as $value) {
-        $res .= $prefix . "read_division_family: " . $this->debugFormatString($value) . "\n";
+      foreach ($this->deprecated_read_division_family as $value) {
+        $res .= $prefix . "deprecated_read_division_family: " . $this->debugFormatString($value) . "\n";
       }
-      if (isset($this->write_division_family)) {
-        $res .= $prefix . "write_division_family: " . $this->debugFormatString($this->write_division_family) . "\n";
+      if (isset($this->deprecated_write_division_family)) {
+        $res .= $prefix . "deprecated_write_division_family: " . $this->debugFormatString($this->deprecated_write_division_family) . "\n";
       }
       if (isset($this->disabled_index)) {
         $res .= $prefix . "disabled_index: " . $this->debugFormatBool($this->disabled_index) . "\n";

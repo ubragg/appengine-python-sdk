@@ -35,6 +35,7 @@ from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
 from google.appengine.tools.devappserver2 import application_configuration
+from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import errors
 
 
@@ -89,11 +90,68 @@ class TestModuleConfiguration(unittest.TestCase):
     env_variables = appinfo.EnvironmentVariables()
     info = appinfo.AppInfoExternal(
         application='app',
+        entrypoint='gunicorn main:app',
         module='module1',
         version='1',
         runtime='python27',
         threadsafe=False,
         automatic_scaling=automatic_scaling,
+        skip_files=r'\*.gif',
+        error_handlers=error_handlers,
+        handlers=handlers,
+        inbound_services=['warmup'],
+        env_variables=env_variables,
+        )
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+    self.mox.VerifyAll()
+
+    self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual(os.path.realpath('/appdir/app.yaml'), config.config_path)
+    self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('exec gunicorn main:app', config.entrypoint)
+    self.assertEqual('dev', config.partition)
+    self.assertEqual('module1', config.module_name)
+    self.assertEqual('1', config.major_version)
+    self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
+    self.assertEqual('python27', config.runtime)
+    self.assertFalse(config.threadsafe)
+    self.assertEqual(automatic_scaling, config.automatic_scaling_config)
+    self.assertTrue(config.is_automatic_scaling)
+    self.assertFalse(config.is_basic_scaling)
+    self.assertFalse(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+                         constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS))
+    self.assertEqual(info.GetNormalizedLibraries(),
+                     config.normalized_libraries)
+    self.assertEqual(r'\*.gif', config.skip_files)
+    self.assertEqual(error_handlers, config.error_handlers)
+    self.assertEqual(handlers, config.handlers)
+    self.assertEqual(['warmup'], config.inbound_services)
+    self.assertEqual(env_variables, config.env_variables)
+    self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
+    self.assertEqual(_DEFAULT_HEALTH_CHECK, config.health_check)
+
+  def test_good_app_yaml_configuration_basic_scaling(self):
+    basic_scaling = appinfo.BasicScaling()
+    error_handlers = [appinfo.ErrorHandlers(file='error.html')]
+    handlers = [appinfo.URLMap()]
+    env_variables = appinfo.EnvironmentVariables()
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='python27',
+        threadsafe=False,
+        basic_scaling=basic_scaling,
         skip_files=r'\*.gif',
         error_handlers=error_handlers,
         handlers=handlers,
@@ -118,7 +176,15 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
     self.assertEqual('python27', config.runtime)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(automatic_scaling, config.automatic_scaling)
+    self.assertEqual(basic_scaling, config.basic_scaling_config)
+    self.assertFalse(config.is_automatic_scaling)
+    self.assertTrue(config.is_basic_scaling)
+    self.assertFalse(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_BASIC_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT[
+                         constants.DEFAULT_BASIC_SCALING_INSTANCE_CLASS])
     self.assertEqual(info.GetNormalizedLibraries(),
                      config.normalized_libraries)
     self.assertEqual(r'\*.gif', config.skip_files)
@@ -128,6 +194,68 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(env_variables, config.env_variables)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
     self.assertEqual(_DEFAULT_HEALTH_CHECK, config.health_check)
+
+  def test_memory_limit_configuration_auto_scaling_nondefault(self):
+    automatic_scaling = appinfo.AutomaticScaling()
+    error_handlers = [appinfo.ErrorHandlers(file='error.html')]
+    handlers = [appinfo.URLMap()]
+    env_variables = appinfo.EnvironmentVariables()
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='python27',
+        threadsafe=False,
+        automatic_scaling=automatic_scaling,
+        skip_files=r'\*.gif',
+        error_handlers=error_handlers,
+        handlers=handlers,
+        inbound_services=['warmup'],
+        env_variables=env_variables,
+        instance_class='F4_1G',
+        )
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+    self.mox.VerifyAll()
+
+    self.assertEqual(config.instance_class, 'F4_1G')
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT['F4_1G'])
+
+  def test_memory_limit_configuration_basic_scaling_nondefault(self):
+    basic_scaling = appinfo.BasicScaling()
+    error_handlers = [appinfo.ErrorHandlers(file='error.html')]
+    handlers = [appinfo.URLMap()]
+    env_variables = appinfo.EnvironmentVariables()
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='python27',
+        threadsafe=False,
+        basic_scaling=basic_scaling,
+        skip_files=r'\*.gif',
+        error_handlers=error_handlers,
+        handlers=handlers,
+        inbound_services=['warmup'],
+        env_variables=env_variables,
+        instance_class='B4_1G',
+        )
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+    self.mox.VerifyAll()
+
+    self.assertEqual(config.instance_class, 'B4_1G')
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT['B4_1G'])
 
   def test_app_yaml_with_service(self):
     handlers = [appinfo.URLMap()]
@@ -230,7 +358,15 @@ class TestModuleConfiguration(unittest.TestCase):
         {49111: 49111, 5002: 49112, 8000: 8000},
         config.forwarded_ports)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(manual_scaling, config.manual_scaling)
+    self.assertEqual(manual_scaling, config.manual_scaling_config)
+    self.assertFalse(config.is_automatic_scaling)
+    self.assertFalse(config.is_basic_scaling)
+    self.assertTrue(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+                         constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS))
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
     self.assertEqual(info.health_check, config.health_check)
 
@@ -276,7 +412,15 @@ class TestModuleConfiguration(unittest.TestCase):
         {49111: 49111, 5002: 49112, 8000: 8000},
         config.forwarded_ports)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(manual_scaling, config.manual_scaling)
+    self.assertEqual(manual_scaling, config.manual_scaling_config)
+    self.assertFalse(config.is_automatic_scaling)
+    self.assertFalse(config.is_basic_scaling)
+    self.assertTrue(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+                         constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS))
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
     self.assertEqual(info.health_check, config.health_check)
 
@@ -385,6 +529,56 @@ class TestModuleConfiguration(unittest.TestCase):
     config.check_for_updates()
     self.assertEqual('overriding-app', config.application_external_name)
     self.assertEqual('dev~overriding-app', config.application)
+    self.mox.VerifyAll()
+
+  def test_override_runtime(self):
+    info = appinfo.AppInfoExternal(
+        application='ignored-app',
+        module='default',
+        version='version',
+        runtime='python27',
+        threadsafe=False)
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+    os.path.getmtime('/appdir/app.yaml').AndReturn(20)
+    os.path.getmtime('/appdir/app.yaml').AndReturn(20)
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration(
+        '/appdir/app.yaml', runtime='python25')
+    self.assertEqual('python25', config.runtime)
+    config.check_for_updates()
+    self.assertEqual('python25', config.runtime)
+    self.mox.VerifyAll()
+
+  def test_override_and_add_environment_variables(self):
+    info = appinfo.AppInfoExternal(
+        application='ignored-app',
+        module='default',
+        version='version',
+        runtime='python27',
+        threadsafe=False,
+        env_variables=appinfo.EnvironmentVariables(**{'foo1': 'bar1',
+                                                      'foo2': 'old_var'}))
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+    os.path.getmtime('/appdir/app.yaml').AndReturn(20)
+    os.path.getmtime('/appdir/app.yaml').AndReturn(20)
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration(
+        '/appdir/app.yaml', env_variables={'foo2': 'bar2', 'foo3': 'bar3'})
+    self.assertEqual({'foo1': 'bar1', 'foo2': 'bar2', 'foo3': 'bar3'},
+                     config.env_variables)
+    config.check_for_updates()
+    self.assertEqual({'foo1': 'bar1', 'foo2': 'bar2', 'foo3': 'bar3'},
+                     config.env_variables)
     self.mox.VerifyAll()
 
   def test_check_for_updates_unchanged_mtime(self):
@@ -501,7 +695,7 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertRegexpMatches(config.version_id, r'^version\.\d+$')
     self.assertEqual('python27', config.runtime)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(automatic_scaling1, config.automatic_scaling)
+    self.assertEqual(automatic_scaling1, config.automatic_scaling_config)
 
   def test_check_for_updates_mutable_changes(self):
     info1 = appinfo.AppInfoExternal(
@@ -523,6 +717,7 @@ class TestModuleConfiguration(unittest.TestCase):
         version='version',
         runtime='python27',
         threadsafe=False,
+        entrypoint='exec gunicorn -b :${PORT} main:app',
         libraries=[appinfo.Library(name='jinja2', version='latest')],
         skip_files=r'.*\.py',
         handlers=[appinfo.URLMap()],
@@ -545,7 +740,8 @@ class TestModuleConfiguration(unittest.TestCase):
              application_configuration.HANDLERS_CHANGED,
              application_configuration.INBOUND_SERVICES_CHANGED,
              application_configuration.ENV_VARIABLES_CHANGED,
-             application_configuration.ERROR_HANDLERS_CHANGED]),
+             application_configuration.ERROR_HANDLERS_CHANGED,
+             application_configuration.ENTRYPOINT_ADDED]),
         config.check_for_updates())
     self.mox.VerifyAll()
 
@@ -556,10 +752,11 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(info2.handlers, config.handlers)
     self.assertEqual(info2.inbound_services, config.inbound_services)
     self.assertEqual(info2.env_variables, config.env_variables)
-
+    self.assertEqual(info2.entrypoint, config.entrypoint)
 
 
 class TestBackendsConfiguration(unittest.TestCase):
+
   def setUp(self):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(
@@ -578,7 +775,7 @@ class TestBackendsConfiguration(unittest.TestCase):
         backends=[static_backend_entry, dynamic_backend_entry])
     module_config = object()
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml', None).AndReturn(module_config)
+        '/appdir/app.yaml', None, None, None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
     static_configuration = object()
@@ -605,7 +802,7 @@ class TestBackendsConfiguration(unittest.TestCase):
     backend_info = backendinfo.BackendInfoExternal()
     module_config = object()
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml', None).AndReturn(module_config)
+        '/appdir/app.yaml', None, None, None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
 
@@ -625,7 +822,7 @@ class TestBackendsConfiguration(unittest.TestCase):
         application_configuration.ModuleConfiguration)
     self.mox.StubOutWithMock(application_configuration, 'ModuleConfiguration')
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml', None).AndReturn(module_config)
+        '/appdir/app.yaml', None, None, None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
     module_config.check_for_updates().AndReturn(set())
@@ -645,6 +842,7 @@ class TestBackendsConfiguration(unittest.TestCase):
 
 
 class TestDispatchConfiguration(unittest.TestCase):
+
   def setUp(self):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(os.path, 'getmtime')
@@ -750,6 +948,7 @@ class TestDispatchConfiguration(unittest.TestCase):
 
 
 class TestBackendConfiguration(unittest.TestCase):
+
   def setUp(self):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(
@@ -781,6 +980,7 @@ class TestBackendConfiguration(unittest.TestCase):
         handlers=handlers,
         inbound_services=['warmup'],
         env_variables=env_variables,
+        default_expiration='4d 3h',
         )
     backend_entry = backendinfo.BackendEntry(
         name='static',
@@ -808,10 +1008,10 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertRegexpMatches(config.version_id, r'static:1\.\d+')
     self.assertEqual('python27', config.runtime)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(None, config.automatic_scaling)
-    self.assertEqual(None, config.basic_scaling)
+    self.assertEqual(None, config.automatic_scaling_config)
+    self.assertEqual(None, config.basic_scaling_config)
     self.assertEqual(appinfo.ManualScaling(instances='3'),
-                     config.manual_scaling)
+                     config.manual_scaling_config)
     self.assertEqual(info.GetNormalizedLibraries(),
                      config.normalized_libraries)
     self.assertEqual(r'\*.gif', config.skip_files)
@@ -820,9 +1020,11 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertEqual(['warmup'], config.inbound_services)
     self.assertEqual(env_variables, config.env_variables)
 
-    whitelist_fields = ['module_name', 'version_id', 'automatic_scaling',
-                        'manual_scaling', 'basic_scaling', 'is_backend',
-                        'minor_version']
+    whitelist_fields = ['module_name', 'version_id', 'automatic_scaling_config',
+                        'manual_scaling_config', 'basic_scaling_config',
+                        'is_backend', 'minor_version', 'instance_class',
+                        'memory_limit', 'is_automatic_scaling',
+                        'is_manual_scaling', 'is_basic_scaling']
     # Check that all public attributes and methods in a ModuleConfiguration
     # exist in a BackendConfiguration.
     for field in dir(module_config):
@@ -877,10 +1079,18 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertEqual(beta_settings['vm_runtime'], config.effective_runtime)
     self.assertFalse(config.threadsafe)
     # Resident backends are assigned manual scaling.
-    self.assertEqual(None, config.automatic_scaling)
-    self.assertEqual(None, config.basic_scaling)
+    self.assertEqual(None, config.automatic_scaling_config)
+    self.assertEqual(None, config.basic_scaling_config)
     self.assertEqual(appinfo.ManualScaling(instances='3'),
-                     config.manual_scaling)
+                     config.manual_scaling_config)
+    self.assertFalse(config.is_automatic_scaling)
+    self.assertFalse(config.is_basic_scaling)
+    self.assertTrue(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+                         constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS))
 
   def test_good_configuration_dynamic_scaling(self):
     automatic_scaling = appinfo.AutomaticScaling(min_pending_latency='1.0s',
@@ -927,10 +1137,18 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertRegexpMatches(config.version_id, r'dynamic:1\.\d+')
     self.assertEqual('python27', config.runtime)
     self.assertFalse(config.threadsafe)
-    self.assertEqual(None, config.automatic_scaling)
-    self.assertEqual(None, config.manual_scaling)
+    self.assertEqual(None, config.automatic_scaling_config)
+    self.assertEqual(None, config.manual_scaling_config)
     self.assertEqual(appinfo.BasicScaling(max_instances='3'),
-                     config.basic_scaling)
+                     config.basic_scaling_config)
+    self.assertFalse(config.is_automatic_scaling)
+    self.assertTrue(config.is_basic_scaling)
+    self.assertFalse(config.is_manual_scaling)
+    self.assertEqual(config.instance_class,
+                     constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS)
+    self.assertEqual(config.memory_limit,
+                     constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+                         constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS))
     self.assertEqual(info.GetNormalizedLibraries(),
                      config.normalized_libraries)
     self.assertEqual(r'\*.gif', config.skip_files)
@@ -960,12 +1178,14 @@ class TestBackendConfiguration(unittest.TestCase):
 
 
 class ModuleConfigurationStub(object):
+
   def __init__(self, application='myapp', module_name='module'):
     self.application = application
     self.module_name = module_name
 
 
 class DispatchConfigurationStub(object):
+
   def __init__(self, dispatch):
     self.dispatch = dispatch
 
@@ -1001,11 +1221,11 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config1 = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config1)
+        absnames[0], None, None, None).AndReturn(module_config1)
 
     module_config2 = ModuleConfigurationStub(module_name='other')
     application_configuration.ModuleConfiguration(
-        absnames[1], None).AndReturn(module_config2)
+        absnames[1], None, None, None).AndReturn(module_config2)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -1020,12 +1240,12 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config1 = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config1)
+        absnames[0], None, None, None).AndReturn(module_config1)
 
     module_config2 = ModuleConfigurationStub(application='other_app',
                                              module_name='other')
     application_configuration.ModuleConfiguration(
-        absnames[1], None).AndReturn(module_config2)
+        absnames[1], None, None, None).AndReturn(module_config2)
 
     self.mox.ReplayAll()
     self.assertRaises(errors.InvalidAppConfigError,
@@ -1038,10 +1258,10 @@ class TestApplicationConfiguration(unittest.TestCase):
         ['appdir/app.yaml', 'appdir/other.yaml'])
 
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(ModuleConfigurationStub())
+        absnames[0], None, None, None).AndReturn(ModuleConfigurationStub())
 
     application_configuration.ModuleConfiguration(
-        absnames[1], None).AndReturn(ModuleConfigurationStub())
+        absnames[1], None, None, None).AndReturn(ModuleConfigurationStub())
 
     self.mox.ReplayAll()
     self.assertRaises(errors.InvalidAppConfigError,
@@ -1054,7 +1274,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -1069,10 +1289,10 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     app_yaml_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(app_yaml_config)
+        absnames[0], None, None, None).AndReturn(app_yaml_config)
     my_module_config = ModuleConfigurationStub(module_name='my_module')
     application_configuration.ModuleConfiguration(
-        absnames[1], None).AndReturn(my_module_config)
+        absnames[1], None, None, None).AndReturn(my_module_config)
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
         [os.path.dirname(absnames[0]), absnames[1]])
@@ -1085,7 +1305,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -1126,7 +1346,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(absnames)
@@ -1140,13 +1360,13 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1], None).AndReturn(backends_config)
+        absnames[0], absnames[1], None, None, None).AndReturn(backends_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -1161,14 +1381,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1], None).AndReturn(backends_config)
+        absnames[0], absnames[1], None, None, None).AndReturn(backends_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(absnames)
@@ -1182,14 +1402,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1], None).AndReturn(backends_config)
+        absnames[0], absnames[1], None, None, None).AndReturn(backends_config)
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'backend')])
     application_configuration.DispatchConfiguration(
@@ -1208,7 +1428,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='not-default')
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     dispatch_config = DispatchConfigurationStub([(None, 'default')])
     application_configuration.DispatchConfiguration(
@@ -1226,7 +1446,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'fake-module')])
@@ -1246,7 +1466,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0], None).AndReturn(module_config)
+        absnames[0], None, None, None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     with _java_temporarily_supported():
@@ -1289,14 +1509,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module1_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        app_yaml, None).AndReturn(module1_config)
+        app_yaml, None, None, None).AndReturn(module1_config)
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'module2')])
     application_configuration.DispatchConfiguration(
         dispatch_yaml).AndReturn(dispatch_config)
     module2_config = ModuleConfigurationStub(module_name='module2')
     application_configuration.ModuleConfiguration(
-        appengine_web_xml, None).AndReturn(module2_config)
+        appengine_web_xml, None, None, None).AndReturn(module2_config)
 
     self.mox.ReplayAll()
     with _java_temporarily_supported():

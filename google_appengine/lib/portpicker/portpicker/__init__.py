@@ -1,4 +1,4 @@
-# MOE:insert #!/usr/bin/python3
+#!/usr/bin/python3
 #
 # Copyright 2007 Google Inc. All Rights Reserved.
 #
@@ -36,17 +36,53 @@ Typical usage:
 """
 
 from __future__ import print_function
+
+import logging
 import os
 import random
 import socket
 import sys
 
 # The legacy Bind, IsPortFree, etc. names are not exported.
-__all__ = ('bind', 'is_port_free', 'pick_unused_port',
-           'get_port_from_port_server')
+__all__ = ('bind', 'is_port_free', 'pick_unused_port', 'return_port',
+           'add_reserved_port', 'get_port_from_port_server')
 
 _PROTOS = [(socket.SOCK_STREAM, socket.IPPROTO_TCP),
            (socket.SOCK_DGRAM, socket.IPPROTO_UDP)]
+
+
+# Ports that are currently available to be given out.
+_free_ports = set()
+
+# Ports that are reserved or from the portserver that may be returned.
+_owned_ports = set()
+
+# Ports that we chose randomly that may be returned.
+_random_ports = set()
+
+
+class NoFreePortFoundError(Exception):
+    """Exception indicating that no free port could be found."""
+    pass
+
+
+def add_reserved_port(port):
+    """Add a port that was acquired by means other than the port server."""
+    _free_ports.add(port)
+
+
+def return_port(port):
+    """Return a port that is no longer being used so it can be reused."""
+    if port in _random_ports:
+        _random_ports.remove(port)
+    elif port in _owned_ports:
+        _owned_ports.remove(port)
+        _free_ports.add(port)
+    elif port in _free_ports:
+        logging.info("Returning a port that was already returned: %s", port)
+    else:
+        logging.info("Returning a port that wasn't given by portpicker: %s",
+                     port)
 
 
 def bind(port, socket_type, socket_proto):
@@ -102,25 +138,44 @@ def is_port_free(port):
 IsPortFree = is_port_free  # legacy API. pylint: disable=invalid-name
 
 
-def pick_unused_port(pid=None):
+def pick_unused_port(pid=None, portserver_address=None):
     """A pure python implementation of PickUnusedPort.
 
     Args:
       pid: PID to tell the portserver to associate the reservation with. If
-        None,
-        the current process's PID is used.
+        None, the current process's PID is used.
+      portserver_address: The address (path) of a unix domain socket
+        with which to connect to a portserver, a leading '@'
+        character indicates an address in the "abstract namespace".  OR
+        On systems without socket.AF_UNIX, this is an AF_INET address.
+        If None, or no port is returned by the portserver at the provided
+        address, the environment will be checked for a PORTSERVER_ADDRESS
+        variable.  If that is not set, no port server will be used.
 
     Returns:
       A port number that is unused on both TCP and UDP.
+
+    Raises:
+      NoFreePortFoundError: No free port could be found.
     """
-    port = None
+    try:  # Instead of `if _free_ports:` to handle the race condition.
+        port = _free_ports.pop()
+    except KeyError:
+        pass
+    else:
+        _owned_ports.add(port)
+        return port
     # Provide access to the portserver on an opt-in basis.
+    if portserver_address:
+        port = get_port_from_port_server(portserver_address, pid=pid)
+        if port:
+            return port
     if 'PORTSERVER_ADDRESS' in os.environ:
         port = get_port_from_port_server(os.environ['PORTSERVER_ADDRESS'],
                                          pid=pid)
-    if not port:
-        return _pick_unused_port_without_server()
-    return port
+        if port:
+            return port
+    return _pick_unused_port_without_server()
 
 PickUnusedPort = pick_unused_port  # legacy API. pylint: disable=invalid-name
 
@@ -134,24 +189,32 @@ def _pick_unused_port_without_server():  # Protected. pylint: disable=invalid-na
     should not be called by code outside of this module.
 
     Returns:
-      A port number that is unused on both TCP and UDP.  None on error.
+      A port number that is unused on both TCP and UDP.
+
+    Raises:
+      NoFreePortFoundError: No free port could be found.
     """
     # Try random ports first.
     rng = random.Random()
     for _ in range(10):
-        port = int(rng.randrange(32768, 60000))
+        port = int(rng.randrange(15000, 25000))
         if is_port_free(port):
+            _random_ports.add(port)
             return port
 
-    # Try OS-assigned ports next.
+    # Next, try a few times to get an OS-assigned port.
     # Ambrose discovered that on the 2.6 kernel, calling Bind() on UDP socket
     # returns the same port over and over. So always try TCP first.
-    while True:
+    for _ in range(10):
         # Ask the OS for an unused port.
         port = bind(0, _PROTOS[0][0], _PROTOS[0][1])
         # Check if this port is unused on the other protocol.
         if port and bind(port, _PROTOS[1][0], _PROTOS[1][1]):
+            _random_ports.add(port)
             return port
+
+    # Give up.
+    raise NoFreePortFoundError()
 
 
 def get_port_from_port_server(portserver_address, pid=None):
@@ -168,6 +231,7 @@ def get_port_from_port_server(portserver_address, pid=None):
       portserver_address: The address (path) of a unix domain socket
         with which to connect to the portserver.  A leading '@'
         character indicates an address in the "abstract namespace."
+        On systems without socket.AF_UNIX, this is an AF_INET address.
       pid: The PID to tell the portserver to associate the reservation with.
         If None, the current process's PID is used.
 
@@ -188,7 +252,11 @@ def get_port_from_port_server(portserver_address, pid=None):
 
     try:
         # Create socket.
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        if hasattr(socket, 'AF_UNIX'):
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        else:
+            # fallback to AF_INET if this is not unix
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             # Connect to portserver.
             sock.connect(portserver_address)
@@ -201,15 +269,19 @@ def get_port_from_port_server(portserver_address, pid=None):
             buf = sock.recv(1024)
         finally:
             sock.close()
-    except socket.error:
-        print('Socket error when connecting to portserver.', file=sys.stderr)
+    except socket.error as e:
+        print('Socket error when connecting to portserver:', e,
+              file=sys.stderr)
         return None
 
     try:
-        return int(buf.split(b'\n')[0])
+        port = int(buf.split(b'\n')[0])
     except ValueError:
         print('Portserver failed to find a port.', file=sys.stderr)
         return None
+    _owned_ports.add(port)
+    return port
+
 
 GetPortFromPortServer = get_port_from_port_server  # legacy API. pylint: disable=invalid-name
 

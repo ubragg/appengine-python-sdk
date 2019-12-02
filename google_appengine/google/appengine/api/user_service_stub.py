@@ -123,6 +123,20 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self.__scopes = scopes
     self.__client_id = client_id
 
+  def _Dynamic_SetOAuthUser(self, request, unused_response, unused_request_id):
+    """Local implementation of UserStubService.SetOAuthUser().
+
+    Args:
+      request: A user_stub_service_pb.SetOAuthUserRequest message.
+    """
+    self.SetOAuthUser(
+        email=request.email() or self.__email,
+        domain=request.auth_domain() or self.__domain,
+        user_id=request.user_id() or self.__user_id,
+        is_admin=request.is_admin() or self.__is_admin,
+        scopes=request.scopes_list() or self.__scopes,
+        client_id=request.client_id() or self.__client_id)
+
   def _Dynamic_CreateLoginURL(self, request, response, request_id):
     """Trivial implementation of UserService.CreateLoginURL().
 
@@ -181,21 +195,8 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       response.set_auth_domain(self.__domain)
       response.set_is_admin(self.__is_admin)
       response.set_client_id(self.__client_id)
-      if request.request_writer_permission():
-        response.set_is_project_writer(self.__is_admin)
       for scope in authorized_scopes:
         response.add_scopes(scope)
-
-  def _Dynamic_CheckOAuthSignature(self, unused_request, response, request_id):
-    """Trivial implementation of UserService.CheckOAuthSignature().
-
-    Args:
-      unused_request: a CheckOAuthSignatureRequest
-      response: a CheckOAuthSignatureResponse
-      request_id: A unique string identifying the request associated with the
-          API call.
-    """
-    response.set_oauth_consumer_key(_OAUTH_CONSUMER_KEY)
 
   def _AddHostToContinueURL(self, continue_url, request_id):
     """Adds the request host to the continue url if no host is specified.

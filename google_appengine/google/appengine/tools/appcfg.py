@@ -49,9 +49,11 @@ import StringIO
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import urllib
 import urllib2
+import urlparse
 
 import google
 
@@ -64,7 +66,6 @@ from google.appengine.cron import groctimespecification
 
 from google.appengine.api import appinfo
 from google.appengine.api import appinfo_includes
-from google.appengine.api import backendinfo
 from google.appengine.api import client_deployinfo
 from google.appengine.api import croninfo
 from google.appengine.api import dispatchinfo
@@ -79,6 +80,7 @@ from google.appengine.tools import augment_mimetypes
 from google.appengine.tools import bulkloader
 from google.appengine.tools import context_util
 from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2.go import goroots
 
 
 try:
@@ -106,11 +108,6 @@ else:
 
 LIST_DELIMITER = '\n'
 TUPLE_DELIMITER = '|'
-BACKENDS_ACTION = 'backends'
-BACKENDS_MESSAGE = ('Warning: This application uses Backends, a deprecated '
-                    'feature that has been replaced by Modules, which '
-                    'offers additional functionality. Please convert your '
-                    'backends to modules as described at: ')
 _CONVERTING_URL = (
     'https://developers.google.com/appengine/docs/%s/modules/converting')
 
@@ -131,7 +128,7 @@ BATCH_OVERHEAD = 500
 verbosity = 1
 
 
-PREFIXED_BY_ADMIN_CONSOLE_RE = '^(?:admin-console)(.*)'
+PREFIXED_BY_ADMIN_CONSOLE_RE = '^(?:admin-console|admin-console-hr)(.*)'
 
 
 SDK_PRODUCT = 'appcfg_py'
@@ -152,6 +149,10 @@ DEFAULT_RESOURCE_LIMITS = {
     'max_total_file_size': 150 * MEGA,
     'max_file_count': 10000,
 }
+
+
+
+DEV_SERVER_HOSTNAMES = ('localhost', '127.0.0.1', '::1')
 
 # Client ID and secrets are managed in the Google API console.
 
@@ -177,14 +178,15 @@ SERVICE_ACCOUNT_BASE = (
 
 APP_YAML_FILENAME = 'app.yaml'
 
-
-
-
-GO_APP_BUILDER = os.path.join('goroot', 'bin', 'go-app-builder')
-if sys.platform.startswith('win'):
-  GO_APP_BUILDER += '.exe'
-
-GCLOUD_ONLY_RUNTIMES = set(['custom', 'nodejs'])
+GCLOUD_ONLY_RUNTIMES = set([
+    'custom',
+    'go111',
+    'go112',
+    'nodejs',
+    'nodejs8',
+    'php72',
+    'python37',
+])
 
 
 
@@ -219,22 +221,6 @@ def StatusUpdate(msg, error_fh=sys.stderr):
   PrintUpdate(msg, error_fh)
 
 
-def BackendsStatusUpdate(runtime, error_fh=sys.stderr):
-  """Print the Backends status message based on current runtime.
-
-  Args:
-    runtime: String name of current runtime.
-    error_fh: Where to send the message.
-  """
-  language = runtime
-  if language == 'python27':
-    language = 'python'
-  elif language == 'java7':
-    language = 'java'
-  if language == 'python' or language == 'java':
-    StatusUpdate(BACKENDS_MESSAGE + (_CONVERTING_URL % language), error_fh)
-
-
 def ErrorUpdate(msg, error_fh=sys.stderr):
   """Print an error message to stderr."""
   PrintUpdate(msg, error_fh)
@@ -250,6 +236,10 @@ def _PrintErrorAndExit(stream, msg, exit_code=2):
   """
   stream.write(msg)
   sys.exit(exit_code)
+
+
+def _IsDevAppserver(server):
+  return urlparse.urlparse('//' + server).hostname in DEV_SERVER_HOSTNAMES
 
 
 def JavaSupported():
@@ -598,6 +588,16 @@ def MigratePython27Notice():
       'possible, which offers performance improvements and many new features. '
       'Learn how simple it is to migrate your application to Python 2.7 at '
       'https://developers.google.com/appengine/docs/python/python25/migrate27.')
+
+
+def MigrateGcloudNotice():
+  """Tells the user that deploying a flex app with appcfg is deprecated."""
+  ErrorUpdate(
+      'WARNING: We highly recommend using the Google Cloud '
+      'SDK for deployments to the App Engine Flexible '
+      'Environment. Using appcfg.py for deployments to the '
+      'flexible environment could lead to downtime. Please '
+      'visit https://cloud.google.com/sdk to learn more.')
 
 
 class IndexDefinitionUpload(object):
@@ -1785,7 +1785,6 @@ class AppVersionUpload(object):
     config: The AppInfoExternal object derived from the app.yaml file.
     app_id: The application string from 'config'.
     version: The version string from 'config'.
-    backend: The backend to update, if any.
     files: A dictionary of files to upload to the rpcserver, mapping path to
       hash of the file contents.
     in_transaction: True iff a transaction with the server has started.
@@ -1799,7 +1798,6 @@ class AppVersionUpload(object):
   """
 
   def __init__(self, rpcserver, config, module_yaml_path='app.yaml',
-               backend=None,
                error_fh=None,
                usage_reporting=False, ignore_endpoints_failures=True):
     """Creates a new AppVersionUpload.
@@ -1811,8 +1809,6 @@ class AppVersionUpload(object):
         this application.
       module_yaml_path: The (string) path to the yaml file corresponding to
         <config>, relative to the bundle directory.
-      backend: If specified, indicates the update applies to the given backend.
-        The backend name must match an entry in the backends: stanza.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
       usage_reporting: Whether or not to report usage.
       ignore_endpoints_failures: True to finish deployment even if there are
@@ -1822,8 +1818,9 @@ class AppVersionUpload(object):
     self.rpcserver = rpcserver
     self.config = config
     self.app_id = self.config.application
-    self.module = self.config.module
-    self.backend = backend
+
+
+    self.module = self.config.module or self.config.service
     self.error_fh = error_fh or sys.stderr
 
     self.version = self.config.version
@@ -1833,9 +1830,7 @@ class AppVersionUpload(object):
       self.params['app_id'] = self.app_id
     if self.module:
       self.params['module'] = self.module
-    if self.backend:
-      self.params['backend'] = self.backend
-    elif self.version:
+    if self.version:
       self.params['version'] = self.version
 
 
@@ -1890,9 +1885,7 @@ class AppVersionUpload(object):
     result = 'app: %s' % self.app_id
     if self.module is not None and self.module != appinfo.DEFAULT_MODULE:
       result += ', module: %s' % self.module
-    if self.backend:
-      result += ', backend: %s' % self.backend
-    elif self.version:
+    if self.version:
       result += ', version: %s' % self.version
     return result
 
@@ -2123,9 +2116,8 @@ class AppVersionUpload(object):
     success, unused_contents = RetryWithBackoff(
         lambda: (self.IsReady(), None), PrintRetryMessage, 1, 2, 60, 20)
     if not success:
-
       logging.warning('Version still not ready to serve, aborting.')
-      raise RuntimeError('Version not ready.')
+      raise RuntimeError('Version is not ready to serve.')
 
     result = self.StartServing()
     if not result:
@@ -2138,9 +2130,8 @@ class AppVersionUpload(object):
             'Another operation on this version is in progress.')
       success, response = RetryNoBackoff(self.IsServing, PrintRetryMessage)
       if not success:
-
         logging.warning('Version still not serving, aborting.')
-        raise RuntimeError('Version not ready.')
+        raise RuntimeError('Version failed to start serving.')
 
 
 
@@ -2393,7 +2384,6 @@ class AppVersionUpload(object):
     StatusUpdate('Starting update of %s' % self.Describe(), self.error_fh)
 
 
-    path = ''
     try:
       self.resource_limits = GetResourceLimits(self.logging_context,
                                                self.error_fh)
@@ -2405,8 +2395,8 @@ class AppVersionUpload(object):
       if self._IsExceptionClientDeployLoggable(e):
         self.logging_context.LogClientDeploy(self.config.runtime,
                                              start_time_usec, False)
-      logging.error('An error occurred processing file \'%s\': %s. Aborting.',
-                    path, e)
+      logging.error('An error occurred processing files \'%s\': %s. Aborting.',
+                    list(paths), e)
       raise
 
     try:
@@ -2768,6 +2758,7 @@ class AppCfgApp(object):
     argv: The original command line as a list.
     args: The positional command line args left over after parsing the options.
     error_fh: Unexpected HTTPErrors are printed to this file handle.
+    stage_dir: Stagind directory used for deployment.
 
   Attributes for testing:
     parser_class: The class to use for parsing the command line.  Because
@@ -2878,28 +2869,6 @@ class AppCfgApp(object):
         error_desc = "Expected a <directory> argument after '%s'." % (
             actionname.split(' ')[0])
       self.parser.error(error_desc)
-
-
-
-
-    if action == BACKENDS_ACTION:
-      if len(self.args) < 1:
-        RaiseParseError(action, self.actions[BACKENDS_ACTION])
-
-      backend_action_first = BACKENDS_ACTION + ' ' + self.args[0]
-      if backend_action_first in self.actions:
-        self.args.pop(0)
-        action = backend_action_first
-
-      elif len(self.args) > 1:
-        backend_directory_first = BACKENDS_ACTION + ' ' + self.args[1]
-        if backend_directory_first in self.actions:
-          self.args.pop(1)
-          action = backend_directory_first
-
-
-      if len(self.args) < 1 or action == BACKENDS_ACTION:
-        RaiseParseError(action, self.actions[action])
 
     if action not in self.actions:
       self.parser.error("Unknown action: '%s'\n%s" %
@@ -3148,6 +3117,11 @@ class AppCfgApp(object):
     parser.add_option('--no_ignore_endpoints_failures', action='store_false',
                       dest='ignore_endpoints_failures',
                       help=optparse.SUPPRESS_HELP)
+
+
+
+
+
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -3192,9 +3166,7 @@ class AppCfgApp(object):
 
     source = GetSourceName()
 
-    dev_appserver = self.options.host in ['localhost', '127.0.0.1']
-
-    if dev_appserver:
+    if _IsDevAppserver(self.options.server):
       if not self.rpc_server_class:
         self.rpc_server_class = appengine_rpc.HttpRpcServer
         if hasattr(self, 'runtime'):
@@ -3222,6 +3194,11 @@ class AppCfgApp(object):
 
     oauth2_parameters = self._GetOAuth2Parameters()
 
+    extra_headers = {}
+
+
+
+
 
     return self.rpc_server_class(self.options.server, oauth2_parameters,
                                  GetUserAgent(), source,
@@ -3231,6 +3208,7 @@ class AppCfgApp(object):
                                  account_type='HOSTED_OR_GOOGLE',
                                  secure=self.options.secure,
                                  ignore_certs=self.options.ignore_certs,
+                                 extra_headers=extra_headers,
                                  options=self.options)
 
   def _MaybeGetDevshellOAuth2AccessToken(self):
@@ -3338,21 +3316,14 @@ class AppCfgApp(object):
       the source context files, and a list of files including the original paths
       plus the generated source context files.
     """
+    if not source_contexts:
+      return (openfunc, paths)
     context_file_map = {}
-    try:
-      if not os.path.exists(
-          os.path.join(basepath, context_util.CONTEXT_FILENAME)):
-        best_context = context_util.BestSourceContext(source_contexts,
-                                                      basepath)
-        context_file_map[context_util.CONTEXT_FILENAME] = json.dumps(
-            best_context)
-    except context_util.GenerateSourceContextError:
-
-      pass
     if not os.path.exists(
-        os.path.join(basepath, context_util.EXT_CONTEXT_FILENAME)):
-      context_file_map[context_util.EXT_CONTEXT_FILENAME] = json.dumps(
-          source_contexts)
+        os.path.join(basepath, context_util.CONTEXT_FILENAME)):
+      best_context = context_util.BestSourceContext(source_contexts)
+      context_file_map[context_util.CONTEXT_FILENAME] = json.dumps(
+          best_context)
     base_openfunc = openfunc
     def OpenWithContext(name):
       if name in context_file_map:
@@ -3448,7 +3419,7 @@ class AppCfgApp(object):
     msg = 'Application: %s' % appyaml.application
     if appyaml.application != orig_application:
       msg += ' (was: %s)' % orig_application
-    if self.action.function is 'Update':
+    if self.action.function == 'Update':
 
       if (appyaml.module is not None and
           appyaml.module != appinfo.DEFAULT_MODULE):
@@ -3482,18 +3453,6 @@ class AppCfgApp(object):
         fh.close()
       return defns
     return None
-
-  def _ParseBackendsYaml(self, basepath):
-    """Parses the backends.yaml file.
-
-    Args:
-      basepath: the directory of the application.
-
-    Returns:
-      A BackendsInfoExternal object or None if the file does not exist.
-    """
-    return self._ParseYamlFile(basepath, 'backends',
-                               backendinfo.LoadBackendInfo)
 
   def _ParseIndexYaml(self, basepath, appyaml=None):
     """Parses the index.yaml file.
@@ -3667,8 +3626,7 @@ class AppCfgApp(object):
 
     DoDownloadApp(rpcserver, out_dir, app_id, module, app_version)
 
-  def UpdateVersion(self, rpcserver, basepath, appyaml, module_yaml_path,
-                    backend=None):
+  def UpdateVersion(self, rpcserver, basepath, appyaml, module_yaml_path):
     """Updates and deploys a new appversion.
 
     Args:
@@ -3677,7 +3635,6 @@ class AppCfgApp(object):
       appyaml: The AppInfoExternal object parsed from an app.yaml-like file.
       module_yaml_path: The (string) path to the yaml file, relative to the
         bundle directory.
-      backend: The name of the backend to update, if any.
 
     Returns:
       An appinfo.AppInfoSummary if one was returned from the Deploy, None
@@ -3746,13 +3703,16 @@ class AppCfgApp(object):
 
 
 
-
-      goroot = os.path.join(sdk_base, 'goroot')
+      goroot = os.path.join(sdk_base, goroots.GOROOTS[appyaml.api_version])
       if not os.path.exists(goroot):
 
-        goroot = None
-      gab = os.path.join(sdk_base, GO_APP_BUILDER)
-      if os.path.exists(gab):
+        goroot = os.getenv('GOROOT')
+      gab = None
+      if goroot:
+        gab = os.path.join(sdk_base, goroot, 'bin', 'go-app-builder')
+        if sys.platform.startswith('win'):
+          gab += '.exe'
+      if gab and os.path.exists(gab):
         app_paths = list(paths)
         go_files = [f for f in app_paths
                     if f.endswith('.go') and not appyaml.nobuild_files.match(f)]
@@ -3798,14 +3758,12 @@ class AppCfgApp(object):
         paths = app_paths + overlay.keys()
         openfunc = Open
 
-    if source_contexts:
-      openfunc, paths = self._CreateSourceContextFiles(
-          source_contexts, basepath, openfunc, paths)
+    openfunc, paths = self._CreateSourceContextFiles(
+        source_contexts, basepath, openfunc, paths)
     appversion = AppVersionUpload(
         rpcserver,
         appyaml,
         module_yaml_path=module_yaml_path,
-        backend=backend,
         error_fh=self.error_fh,
         usage_reporting=self.options.usage_reporting,
         ignore_endpoints_failures=self.options.ignore_endpoints_failures)
@@ -3826,6 +3784,9 @@ class AppCfgApp(object):
                                                os.path.splitext(file_name)[0])
       if module_yaml.runtime == 'python':
         has_python25_version = True
+
+      if module_yaml.vm is True:
+        MigrateGcloudNotice()
 
 
 
@@ -3851,10 +3812,7 @@ class AppCfgApp(object):
 
 
 
-
-
-      sdk_root = os.path.dirname(appcfg_java.__file__)
-      self.stage_dir = java_app_update.CreateStagingDirectory(sdk_root)
+      self.stage_dir = java_app_update.CreateStagingDirectory()
       try:
         appyaml = self._ParseAppInfoFromYaml(
             self.stage_dir,
@@ -3930,10 +3888,6 @@ class AppCfgApp(object):
       MigratePython27Notice()
 
 
-    if self.options.backends:
-      self.BackendsUpdate()
-
-
 
 
 
@@ -3998,9 +3952,6 @@ class AppCfgApp(object):
                       dest='precompilation', default=True,
                       help='Disable automatic precompilation '
                       '(ignored for Go apps).')
-    parser.add_option('--backends', action='store_true',
-                      dest='backends', default=False,
-                      help='Update backends when performing appcfg update.')
     parser.add_option('--no_usage_reporting', action='store_false',
                       dest='usage_reporting', default=True,
                       help='Disable usage reporting.')
@@ -4118,170 +4069,6 @@ class AppCfgApp(object):
     else:
       print >>self.error_fh, (
           'Could not find dos configuration. No action taken.')
-
-  def BackendsAction(self):
-    """Placeholder; we never expect this action to be invoked."""
-    pass
-
-  def BackendsPhpCheck(self, appyaml):
-    """Don't support backends with the PHP runtime.
-
-    This should be used to prevent use of backends update/start/configure
-    with the PHP runtime.  We continue to allow backends
-    stop/delete/list/rollback just in case there are existing PHP backends.
-
-    Args:
-      appyaml: A parsed app.yaml file.
-    """
-    if appyaml.runtime.startswith('php'):
-      _PrintErrorAndExit(
-          self.error_fh,
-          'Error: Backends are not supported with the PHP runtime. '
-          'Please use Modules instead.\n')
-
-  def BackendsYamlCheck(self, basepath, appyaml, backend=None):
-    """Check the backends.yaml file is sane and which backends to update."""
-
-
-    if appyaml.backends:
-      self.parser.error('Backends are not allowed in app.yaml.')
-
-    backends_yaml = self._ParseBackendsYaml(basepath)
-    appyaml.backends = backends_yaml.backends
-
-    if not appyaml.backends:
-      self.parser.error('No backends found in backends.yaml.')
-
-    backends = []
-    for backend_entry in appyaml.backends:
-      entry = backendinfo.LoadBackendEntry(backend_entry.ToYAML())
-      if entry.name in backends:
-        self.parser.error('Duplicate entry for backend: %s.' % entry.name)
-      else:
-        backends.append(entry.name)
-
-    backends_to_update = []
-
-    if backend:
-
-      if backend in backends:
-        backends_to_update = [backend]
-      else:
-        self.parser.error("Backend '%s' not found in backends.yaml." %
-                          backend)
-    else:
-
-      backends_to_update = backends
-
-    return backends_to_update
-
-  def BackendsUpdate(self):
-    """Updates a backend."""
-    self.backend = None
-    if len(self.args) == 1:
-      self.backend = self.args[0]
-    elif len(self.args) > 1:
-      self.parser.error('Expected an optional <backend> argument.')
-    if JavaSupported() and appcfg_java.IsWarFileWithoutYaml(self.basepath):
-      java_app_update = appcfg_java.JavaAppUpdate(self.basepath, self.options)
-      self.options.compile_jsps = True
-      sdk_root = os.path.dirname(appcfg_java.__file__)
-      basepath = java_app_update.CreateStagingDirectory(sdk_root)
-    else:
-      basepath = self.basepath
-
-    yaml_file_basename = 'app'
-    appyaml = self._ParseAppInfoFromYaml(basepath,
-                                         basename=yaml_file_basename)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    self.BackendsPhpCheck(appyaml)
-    rpcserver = self._GetRpcServer()
-
-    backends_to_update = self.BackendsYamlCheck(basepath, appyaml, self.backend)
-    for backend in backends_to_update:
-      self.UpdateVersion(rpcserver, basepath, appyaml, yaml_file_basename,
-                         backend=backend)
-
-  def BackendsList(self):
-    """Lists all backends for an app."""
-    if self.args:
-      self.parser.error('Expected no arguments.')
-
-
-
-
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/backends/list', app_id=appyaml.application)
-    print >> self.out_fh, response
-
-  def BackendsRollback(self):
-    """Does a rollback of an existing transaction on this backend."""
-    if len(self.args) != 1:
-      self.parser.error('Expected a single <backend> argument.')
-
-    self._Rollback(self.args[0])
-
-  def BackendsStart(self):
-    """Starts a backend."""
-    if len(self.args) != 1:
-      self.parser.error('Expected a single <backend> argument.')
-
-    backend = self.args[0]
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    self.BackendsPhpCheck(appyaml)
-    rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/backends/start',
-                              app_id=appyaml.application,
-                              backend=backend)
-    print >> self.out_fh, response
-
-  def BackendsStop(self):
-    """Stops a backend."""
-    if len(self.args) != 1:
-      self.parser.error('Expected a single <backend> argument.')
-
-    backend = self.args[0]
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/backends/stop',
-                              app_id=appyaml.application,
-                              backend=backend)
-    print >> self.out_fh, response
-
-  def BackendsDelete(self):
-    """Deletes a backend."""
-    if len(self.args) != 1:
-      self.parser.error('Expected a single <backend> argument.')
-
-    backend = self.args[0]
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/backends/delete',
-                              app_id=appyaml.application,
-                              backend=backend)
-    print >> self.out_fh, response
-
-  def BackendsConfigure(self):
-    """Changes the configuration of an existing backend."""
-    if len(self.args) != 1:
-      self.parser.error('Expected a single <backend> argument.')
-
-    backend = self.args[0]
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    BackendsStatusUpdate(appyaml.runtime, self.error_fh)
-    self.BackendsPhpCheck(appyaml)
-    backends_yaml = self._ParseBackendsYaml(self.basepath)
-    rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/backends/configure',
-                              app_id=appyaml.application,
-                              backend=backend,
-                              payload=backends_yaml.ToYAML())
-    print >> self.out_fh, response
 
   def ListVersions(self):
     """Lists all versions for an app."""
@@ -4504,14 +4291,10 @@ class AppCfgApp(object):
                       dest='force_rollback', default=False,
                       help='Force rollback.')
 
-  def _Rollback(self, backend=None):
+  def _Rollback(self):
     """Does a rollback of an existing transaction.
 
-    Args:
-      backend: name of a backend to rollback, or None
-
-    If a backend is specified the rollback will affect only that backend, if no
-    backend is specified the rollback will affect the current app version.
+    Rollback will affect the current app version.
     """
     if os.path.isdir(self.basepath):
       module_yaml = self._ParseAppInfoFromYaml(self.basepath)
@@ -4525,8 +4308,7 @@ class AppCfgApp(object):
                                                os.path.splitext(file_name)[0])
 
     appversion = AppVersionUpload(self._GetRpcServer(), module_yaml,
-                                  module_yaml_path='app.yaml',
-                                  backend=backend)
+                                  module_yaml_path='app.yaml')
 
     appversion.in_transaction = True
 
@@ -4825,6 +4607,14 @@ class AppCfgApp(object):
       logging.error('upload_data action requires SQLite3 and the python '
                     'sqlite3 module (included in python since 2.5).')
       sys.exit(1)
+
+    if _IsDevAppserver(self.options.server):
+
+
+
+
+
+      arg_dict['throttle_class'] = lambda *args, **kwargs: self._GetRpcServer()
 
     sys.exit(bulkloader.Run(arg_dict, self._GetOAuth2Parameters()))
 
@@ -5216,73 +5006,6 @@ definitions from the optional dispatch.yaml file."""),
 The 'update_dos' command will update any new, removed or changed dos
 definitions from the optional dos.yaml file."""),
 
-      'backends': Action(
-          function='BackendsAction',
-          usage='%prog [options] backends <directory> <action>',
-          short_desc='Perform a backend action.',
-          long_desc="""
-The 'backends' command will perform a backends action.""",
-          error_desc="""\
-Expected a <directory> and <action> argument."""),
-
-      'backends list': Action(
-          function='BackendsList',
-          usage='%prog [options] backends <directory> list',
-          short_desc='List all backends configured for the app.',
-          long_desc="""
-The 'backends list' command will list all backends configured for the app."""),
-
-      'backends update': Action(
-          function='BackendsUpdate',
-          usage='%prog [options] backends <directory> update [<backend>]',
-          options=_UpdateOptions,
-          short_desc='Update one or more backends.',
-          long_desc="""
-The 'backends update' command updates one or more backends.  This command
-updates backend configuration settings and deploys new code to the server.  Any
-existing instances will stop and be restarted.  Updates all backends, or a
-single backend if the <backend> argument is provided."""),
-
-      'backends rollback': Action(
-          function='BackendsRollback',
-          usage='%prog [options] backends <directory> rollback <backend>',
-          short_desc='Roll back an update of a backend.',
-          long_desc="""
-The 'backends update' command requires a server-side transaction.
-Use 'backends rollback' if you experience an error during 'backends update'
-and want to start the update over again."""),
-
-      'backends start': Action(
-          function='BackendsStart',
-          usage='%prog [options] backends <directory> start <backend>',
-          short_desc='Start a backend.',
-          long_desc="""
-The 'backends start' command will put a backend into the START state."""),
-
-      'backends stop': Action(
-          function='BackendsStop',
-          usage='%prog [options] backends <directory> stop <backend>',
-          short_desc='Stop a backend.',
-          long_desc="""
-The 'backends start' command will put a backend into the STOP state."""),
-
-      'backends delete': Action(
-          function='BackendsDelete',
-          usage='%prog [options] backends <directory> delete <backend>',
-          short_desc='Delete a backend.',
-          long_desc="""
-The 'backends delete' command will delete a backend."""),
-
-      'backends configure': Action(
-          function='BackendsConfigure',
-          usage='%prog [options] backends <directory> configure <backend>',
-          short_desc='Reconfigure a backend without stopping it.',
-          long_desc="""
-The 'backends configure' command performs an online update of a backend, without
-stopping instances that are currently running.  No code or handlers are updated,
-only certain configuration settings specified in backends.yaml.  Valid settings
-are: instances, options: public, and options: failfast."""),
-
       'vacuum_indexes': Action(
           function='VacuumIndexes',
           usage='%prog [options] vacuum_indexes <directory>',
@@ -5482,6 +5205,11 @@ The 'prepare_vm_runtime' prepares an application for the VM runtime."""),
 def main(argv):
   logging.basicConfig(format=('%(asctime)s %(levelname)s %(filename)s:'
                               '%(lineno)s %(message)s '))
+  logging.warning(textwrap.dedent(
+      """\
+      The appcfg command is deprecated. Please download the Cloud SDK for
+      App Engine development. https://cloud.google.com/appengine/downloads
+      """))
   try:
     result = AppCfgApp(argv).Run()
     if result:

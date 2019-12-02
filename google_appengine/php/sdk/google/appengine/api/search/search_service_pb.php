@@ -751,12 +751,30 @@ namespace google\appengine {
     public function hasIndexDeleteTime() {
       return isset($this->index_delete_time);
     }
+    public function getNumShards() {
+      if (!isset($this->num_shards)) {
+        return 1;
+      }
+      return $this->num_shards;
+    }
+    public function setNumShards($val) {
+      $this->num_shards = $val;
+      return $this;
+    }
+    public function clearNumShards() {
+      unset($this->num_shards);
+      return $this;
+    }
+    public function hasNumShards() {
+      return isset($this->num_shards);
+    }
     public function clear() {
       $this->clearIndexSpec();
       $this->clearField();
       $this->clearStorage();
       $this->clearIndexState();
       $this->clearIndexDeleteTime();
+      $this->clearNumShards();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -780,6 +798,10 @@ namespace google\appengine {
       if (isset($this->index_delete_time)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->index_delete_time);
+      }
+      if (isset($this->num_shards)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->num_shards);
       }
       return $res;
     }
@@ -807,6 +829,10 @@ namespace google\appengine {
       if (isset($this->index_delete_time)) {
         $out->putVarInt32(40);
         $out->putVarInt64($this->index_delete_time);
+      }
+      if (isset($this->num_shards)) {
+        $out->putVarInt32(48);
+        $out->putVarInt32($this->num_shards);
       }
     }
     public function tryMerge($d) {
@@ -836,6 +862,9 @@ namespace google\appengine {
             break;
           case 40:
             $this->setIndexDeleteTime($d->getVarInt64());
+            break;
+          case 48:
+            $this->setNumShards($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -870,6 +899,9 @@ namespace google\appengine {
       if ($x->hasIndexDeleteTime()) {
         $this->setIndexDeleteTime($x->getIndexDeleteTime());
       }
+      if ($x->hasNumShards()) {
+        $this->setNumShards($x->getNumShards());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -885,6 +917,8 @@ namespace google\appengine {
       if (isset($this->index_state) && $this->index_state !== $x->index_state) return false;
       if (isset($this->index_delete_time) !== isset($x->index_delete_time)) return false;
       if (isset($this->index_delete_time) && !$this->integerEquals($this->index_delete_time, $x->index_delete_time)) return false;
+      if (isset($this->num_shards) !== isset($x->num_shards)) return false;
+      if (isset($this->num_shards) && !$this->integerEquals($this->num_shards, $x->num_shards)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -903,6 +937,9 @@ namespace google\appengine {
       }
       if (isset($this->index_delete_time)) {
         $res .= $prefix . "index_delete_time: " . $this->debugFormatInt64($this->index_delete_time) . "\n";
+      }
+      if (isset($this->num_shards)) {
+        $res .= $prefix . "num_shards: " . $this->debugFormatInt32($this->num_shards) . "\n";
       }
       return $res;
     }
@@ -3482,9 +3519,27 @@ namespace google\appengine {
     public function clearIndexSpec() {
       $this->index_spec = array();
     }
+    public function getRequireEmptyIndex() {
+      if (!isset($this->require_empty_index)) {
+        return false;
+      }
+      return $this->require_empty_index;
+    }
+    public function setRequireEmptyIndex($val) {
+      $this->require_empty_index = $val;
+      return $this;
+    }
+    public function clearRequireEmptyIndex() {
+      unset($this->require_empty_index);
+      return $this;
+    }
+    public function hasRequireEmptyIndex() {
+      return isset($this->require_empty_index);
+    }
     public function clear() {
       $this->clearSource();
       $this->clearIndexSpec();
+      $this->clearRequireEmptyIndex();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3496,6 +3551,9 @@ namespace google\appengine {
       $res += 1 * sizeof($this->index_spec);
       foreach ($this->index_spec as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->require_empty_index)) {
+        $res += 2;
       }
       return $res;
     }
@@ -3510,6 +3568,10 @@ namespace google\appengine {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->require_empty_index)) {
+        $out->putVarInt32(24);
+        $out->putBoolean($this->require_empty_index);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3523,6 +3585,9 @@ namespace google\appengine {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->addIndexSpec()->tryMerge($tmp);
+            break;
+          case 24:
+            $this->setRequireEmptyIndex($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3546,6 +3611,9 @@ namespace google\appengine {
       foreach ($x->getIndexSpecList() as $v) {
         $this->addIndexSpec()->copyFrom($v);
       }
+      if ($x->hasRequireEmptyIndex()) {
+        $this->setRequireEmptyIndex($x->getRequireEmptyIndex());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3555,6 +3623,8 @@ namespace google\appengine {
       foreach (array_map(null, $this->index_spec, $x->index_spec) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->require_empty_index) !== isset($x->require_empty_index)) return false;
+      if (isset($this->require_empty_index) && $this->require_empty_index !== $x->require_empty_index) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3564,6 +3634,9 @@ namespace google\appengine {
       }
       foreach ($this->index_spec as $value) {
         $res .= $prefix . "index_spec <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->require_empty_index)) {
+        $res .= $prefix . "require_empty_index: " . $this->debugFormatBool($this->require_empty_index) . "\n";
       }
       return $res;
     }
@@ -5593,6 +5666,23 @@ namespace google\appengine {
     public function hasFacetDepth() {
       return isset($this->facet_depth);
     }
+    public function getEnableQueryRewrite() {
+      if (!isset($this->enable_query_rewrite)) {
+        return false;
+      }
+      return $this->enable_query_rewrite;
+    }
+    public function setEnableQueryRewrite($val) {
+      $this->enable_query_rewrite = $val;
+      return $this;
+    }
+    public function clearEnableQueryRewrite() {
+      unset($this->enable_query_rewrite);
+      return $this;
+    }
+    public function hasEnableQueryRewrite() {
+      return isset($this->enable_query_rewrite);
+    }
     public function clear() {
       $this->clearIndexSpec();
       $this->clearQuery();
@@ -5611,6 +5701,7 @@ namespace google\appengine {
       $this->clearFacetRefinement();
       $this->clearFacetAutoDetectParam();
       $this->clearFacetDepth();
+      $this->clearEnableQueryRewrite();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -5683,6 +5774,9 @@ namespace google\appengine {
       if (isset($this->facet_depth)) {
         $res += 2;
         $res += $this->lengthVarInt64($this->facet_depth);
+      }
+      if (isset($this->enable_query_rewrite)) {
+        $res += 3;
       }
       return $res;
     }
@@ -5765,6 +5859,10 @@ namespace google\appengine {
         $out->putVarInt32(152);
         $out->putVarInt32($this->facet_depth);
       }
+      if (isset($this->enable_query_rewrite)) {
+        $out->putVarInt32(160);
+        $out->putBoolean($this->enable_query_rewrite);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -5846,6 +5944,9 @@ namespace google\appengine {
           case 152:
             $this->setFacetDepth($d->getVarInt32());
             break;
+          case 160:
+            $this->setEnableQueryRewrite($d->getBoolean());
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -5924,6 +6025,9 @@ namespace google\appengine {
       if ($x->hasFacetDepth()) {
         $this->setFacetDepth($x->getFacetDepth());
       }
+      if ($x->hasEnableQueryRewrite()) {
+        $this->setEnableQueryRewrite($x->getEnableQueryRewrite());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -5967,6 +6071,8 @@ namespace google\appengine {
       if (isset($this->facet_auto_detect_param) && !$this->facet_auto_detect_param->equals($x->facet_auto_detect_param)) return false;
       if (isset($this->facet_depth) !== isset($x->facet_depth)) return false;
       if (isset($this->facet_depth) && !$this->integerEquals($this->facet_depth, $x->facet_depth)) return false;
+      if (isset($this->enable_query_rewrite) !== isset($x->enable_query_rewrite)) return false;
+      if (isset($this->enable_query_rewrite) && $this->enable_query_rewrite !== $x->enable_query_rewrite) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6021,6 +6127,9 @@ namespace google\appengine {
       }
       if (isset($this->facet_depth)) {
         $res .= $prefix . "facet_depth: " . $this->debugFormatInt32($this->facet_depth) . "\n";
+      }
+      if (isset($this->enable_query_rewrite)) {
+        $res .= $prefix . "enable_query_rewrite: " . $this->debugFormatBool($this->enable_query_rewrite) . "\n";
       }
       return $res;
     }

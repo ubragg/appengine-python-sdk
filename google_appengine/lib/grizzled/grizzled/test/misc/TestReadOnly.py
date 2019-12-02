@@ -1,15 +1,15 @@
-#!/usr/bin/python2.4
 # $Id: 5a432ced2c81b94f1e4793cbec98258787f6bc92 $
 
 """
 Tester.
 """
 
+from __future__ import print_function
+
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.misc import ReadOnly, ReadOnlyObjectError
 
 # ---------------------------------------------------------------------------
@@ -47,12 +47,12 @@ class TestReadOnly(object):
         try:
             self.r.a += 1
             assert False, 'Expected a ReadOnlyObjectError'
-        except ReadOnlyObjectError, ex:
-            print 'Got expected %s' % ex
+        except ReadOnlyObjectError as ex:
+            print('Got expected %s' % ex)
 
     def testReadOnlyAccess2(self):
         try:
             self.r.a = 200
             assert False, 'Expected a ReadOnlyObjectError'
-        except ReadOnlyObjectError, ex:
-            print 'Got expected %s' % ex
+        except ReadOnlyObjectError as ex:
+            print('Got expected %s' % ex)

@@ -1,13 +1,13 @@
-#!/usr/bin/python2.4
 # $Id: 99b27c0fb42453577338855a901665a65a027dd4 $
 #
 # Nose program for testing grizzled.file classes/functions
+
+from __future__ import print_function
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.text import str2bool
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ class TestStr2Bool(object):
                             ('1',     True,)):
             for s2 in (s, s.upper(), s.capitalize()):
                 val = str2bool(s2)
-                print '"%s" -> %s. Expected=%s' % (s2, expected, val)
+                print('"%s" -> %s. Expected=%s' % (s2, expected, val))
                 assert val == expected, \
                        '"%s" does not produce expected %s' % (s2, expected)
 

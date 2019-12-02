@@ -48,9 +48,13 @@ Many other constants may be defined; these may be used in calls to
 the setsockopt() and getsockopt() methods.
 """
 
-# GOOGLE NOTE: import paths changed to refer to our implementation.
-from google.appengine.api.remote_socket import _remote_socket as _socket
-from google.appengine.api.remote_socket._remote_socket import *
+# pylint: disable=bad-indentation
+# pylint: disable=g-bad-import-order
+# pylint: disable=g-import-not-at-top
+# pylint: disable=reimported
+# pylint: disable=wildcard-import
+import _socket
+from _socket import *
 from functools import partial
 from types import MethodType
 
@@ -70,7 +74,12 @@ else:
 
     # we need to import the same constants we used to...
     from _ssl import SSLError as sslerror
-    from _ssl import RAND_add, RAND_egd, RAND_status, SSL_ERROR_ZERO_RETURN, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_X509_LOOKUP, SSL_ERROR_SYSCALL, SSL_ERROR_SSL, SSL_ERROR_WANT_CONNECT, SSL_ERROR_EOF, SSL_ERROR_INVALID_ERROR_CODE
+    from _ssl import RAND_add, RAND_status, SSL_ERROR_ZERO_RETURN, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_X509_LOOKUP, SSL_ERROR_SYSCALL, SSL_ERROR_SSL, SSL_ERROR_WANT_CONNECT, SSL_ERROR_EOF, SSL_ERROR_INVALID_ERROR_CODE
+    try:
+        from _ssl import RAND_egd
+    except ImportError:
+        # LibreSSL does not provide RAND_egd
+        pass
 
 import os, sys, warnings
 
@@ -317,8 +326,8 @@ class _fileobject(object):
         self._wbuf.append(data)
         self._wbuf_len += len(data)
         if (self._wbufsize == 0 or
-            self._wbufsize == 1 and '\n' in data or
-            self._wbuf_len >= self._wbufsize):
+            (self._wbufsize == 1 and '\n' in data) or
+            (self._wbufsize > 1 and self._wbuf_len >= self._wbufsize)):
             self.flush()
 
     def writelines(self, list):
@@ -543,7 +552,7 @@ def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
     global default timeout setting returned by :func:`getdefaulttimeout`
     is used.  If *source_address* is set it must be a tuple of (host, port)
     for the socket to bind as a source address before making the connection.
-    An host of '' or port 0 tells the OS to use the default.
+    A host of '' or port 0 tells the OS to use the default.
     """
 
     host, port = address
@@ -557,7 +566,7 @@ def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
-            sock.connect(sa, host)
+            sock.connect(sa)
             return sock
 
         except error as _:

@@ -170,6 +170,7 @@ that is suitable for parsing by the standard Python ``config`` module.
 '''
 
 from __future__ import absolute_import
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -177,7 +178,7 @@ __docformat__ = "restructuredtext en"
 # Imports
 # ---------------------------------------------------------------------------
 
-import ConfigParser
+from six.moves import configparser as ConfigParser
 import logging
 import string
 import os
@@ -426,7 +427,7 @@ class Configuration(ConfigParser.SafeConfigParser):
         '''
         self.__preprocess(fp, filename)
 
-    def get(self, section, option, optional=False):
+    def get(self, section, option, optional=False, raw=False, vars=None, fallback=None):
         """
         Get an option from a section.
 
@@ -446,7 +447,8 @@ class Configuration(ConfigParser.SafeConfigParser):
         :raise NoOptionError: no such option in the section
         """
         def do_get(section, option):
-            val = ConfigParser.SafeConfigParser.get(self, section, option)
+            val = ConfigParser.SafeConfigParser.get(
+                self, section, option, raw=raw)
             if len(val.strip()) == 0:
                 raise ConfigParser.NoOptionError(option, section)
             return val
@@ -861,7 +863,7 @@ class _ConfigDict(dict):
 
         if not result:
             if self.__strict_substitution:
-                raise NoVariableError, 'No such variable: "%s"' % key
+                raise NoVariableError('No such variable: "{0}"'.format(key))
             else:
                 result = ''
 
@@ -888,7 +890,7 @@ class _ConfigDict(dict):
         if section == 'env':
             result = os.environ[option]
             if len(result) == 0:
-                raise KeyError, option
+                raise KeyError(option)
 
         elif section == 'program':
             result = self.__value_from_program_section(option)
@@ -968,6 +970,6 @@ if __name__ == '__main__':
         for var in sys.argv[2:]:
             (section, option) = var.split(':')
             val = config.get(section, option, optional=True)
-            print '%s=%s' % (var, val)
+            print('{0}={1}'.format(var, val))
     else:
         config.write(sys.stdout)

@@ -18,11 +18,14 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -31,8 +34,6 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
-from google.appengine.api.api_base_pb import *
-import google.appengine.api.api_base_pb
 class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -100,7 +101,7 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -110,7 +111,7 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -316,7 +317,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -331,7 +332,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksuccess_path = 1
   kmax_upload_size_bytes = 2
@@ -432,7 +433,7 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -443,7 +444,7 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kurl = 1
 
@@ -500,7 +501,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+    for i in range(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
     if (x.has_token()): self.set_token(x.token())
 
   def Equals(self, x):
@@ -519,14 +520,14 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
@@ -535,7 +536,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_token()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
     if (self.has_token_):
@@ -543,7 +544,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.token_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
     if (self.has_token_):
@@ -561,7 +562,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -578,7 +579,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   ktoken = 2
@@ -740,7 +741,7 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -753,7 +754,7 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   kstart_index = 2
@@ -848,7 +849,7 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -859,7 +860,7 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdata = 1000
 
@@ -1018,7 +1019,7 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1031,7 +1032,7 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   kmime_type = 2
@@ -1126,7 +1127,7 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1137,7 +1138,7 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 
@@ -1179,7 +1180,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+    for i in range(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -1195,25 +1196,25 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     return n
 
   def Clear(self):
     self.clear_blob_key()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
 
@@ -1225,7 +1226,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1241,7 +1242,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 
@@ -1283,7 +1284,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.decoded_size()): self.add_decoded(x.decoded(i))
+    for i in range(x.decoded_size()): self.add_decoded(x.decoded(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -1299,25 +1300,25 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.decoded_)
-    for i in xrange(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
+    for i in range(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.decoded_)
-    for i in xrange(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
+    for i in range(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
     return n
 
   def Clear(self):
     self.clear_decoded()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.decoded_)):
+    for i in range(len(self.decoded_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.decoded_[i])
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.decoded_)):
+    for i in range(len(self.decoded_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.decoded_[i])
 
@@ -1329,7 +1330,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1345,7 +1346,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdecoded = 1
 
@@ -1434,7 +1435,7 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1445,7 +1446,7 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
 
@@ -1534,7 +1535,7 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1545,7 +1546,7 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 

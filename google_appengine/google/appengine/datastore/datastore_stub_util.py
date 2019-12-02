@@ -42,7 +42,9 @@ except ImportError:
 
 import atexit
 import collections
+import httplib
 import itertools
+import json
 import logging
 import os
 import random
@@ -51,6 +53,8 @@ import threading
 import time
 import weakref
 
+from google.net.proto import ProtocolBuffer
+from google.appengine.datastore import entity_pb
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_admin
@@ -65,8 +69,6 @@ from google.appengine.datastore import datastore_query
 from google.appengine.datastore import datastore_stub_index
 from google.appengine.datastore import datastore_v4_pb
 from google.appengine.runtime import apiproxy_errors
-from google.net.proto import ProtocolBuffer
-from google.appengine.datastore import entity_pb
 
 if datastore_pbs._CLOUD_DATASTORE_ENABLED:
   from google.appengine.datastore.datastore_pbs import googledatastore
@@ -177,6 +179,12 @@ _MAX_SCATTERED_ID = _MAX_SEQUENTIAL_ID + 1 + _MAX_SCATTERED_COUNTER
 
 
 _SCATTER_SHIFT = 64 - _MAX_SEQUENTIAL_BIT + 1
+
+
+
+
+
+_EMULATOR_CONFIG_CACHE = None
 
 
 def _GetScatterProperty(entity_proto):
@@ -490,8 +498,8 @@ def CheckReference(request_trusted,
 
   Check(key.path().element_size() > 0, 'key\'s path cannot be empty')
 
-  if require_id_or_name and not datastore_pbs.is_complete_v3_key(key):
-    raise datastore_errors.BadRequestError('missing key id/name')
+  if require_id_or_name:
+    Check(datastore_pbs.is_complete_v3_key(key), 'missing key id/name')
 
   for elem in key.path().element_list():
     Check(not elem.has_id() or not elem.has_name(),
@@ -1202,7 +1210,7 @@ class BaseCursor(object):
 
     Args:
       last_result: the last result returned by this query.
-      compiled_cursor: an empty datstore_pb.CompiledCursor.
+      compiled_cursor: an empty datastore_pb.CompiledCursor.
     """
     if last_result is not None:
 
@@ -1460,13 +1468,14 @@ class LiveTxn(object):
   _state = ACTIVE
   _commit_time_s = None
 
-  def __init__(self, txn_manager, app, allow_multiple_eg):
+  def __init__(self, txn_manager, app, allow_multiple_eg, mode):
     assert isinstance(txn_manager, BaseTransactionManager)
     assert isinstance(app, basestring)
 
     self._txn_manager = txn_manager
     self._app = app
     self._allow_multiple_eg = allow_multiple_eg
+    self._mode = mode
 
 
     self._entity_groups = {}
@@ -1610,6 +1619,9 @@ class LiveTxn(object):
         exists.
       indexes: The composite indexes that apply to the entity.
     """
+    Check(self._mode != datastore_pb.BeginTransactionRequest.READ_ONLY,
+          'Cannot modify entities in a read-only transaction.')
+
     tracker = self._GetTracker(entity.key())
     key = datastore_types.ReferenceToKeyValue(entity.key())
     tracker._delete.pop(key, None)
@@ -1624,6 +1636,9 @@ class LiveTxn(object):
       reference: The entity_pb.Reference of the entity to delete.
       indexes: The composite indexes that apply to the entity.
     """
+    Check(self._mode != datastore_pb.BeginTransactionRequest.READ_ONLY,
+          'Cannot modify entities in a read-only transaction.')
+
     tracker = self._GetTracker(reference)
     key = datastore_types.ReferenceToKeyValue(reference)
     tracker._put.pop(key, None)
@@ -1641,6 +1656,9 @@ class LiveTxn(object):
     """
     Check(not max_actions or len(self._actions) + len(actions) <= max_actions,
           'Too many messages, maximum allowed %s' % max_actions)
+    Check(self._mode != datastore_pb.BeginTransactionRequest.READ_ONLY,
+          'Cannot add actions in a read-only transaction.')
+
     self._actions.extend(actions)
 
   def Rollback(self):
@@ -1715,7 +1733,6 @@ class LiveTxn(object):
       self._txn_manager._AcquireWriteLocks(meta_data_list)
     except:
 
-      self.Rollback()
       raise
 
     try:
@@ -1771,8 +1788,8 @@ class LiveTxn(object):
     We assume that old_entity represents the current state of the Datastore.
 
     Args:
-      old_entity: Entity representing the current state in the Datstore.
-      new_entity: Entity representing the desired state in the Datstore.
+      old_entity: Entity representing the current state in the Datastore.
+      new_entity: Entity representing the desired state in the Datastore.
     """
     composite_indexes = self._kind_to_indexes[_GetKeyKind(new_entity.key())]
     entity_writes, index_writes = _CalculateWriteOps(
@@ -2056,6 +2073,9 @@ class PseudoRandomHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
       seed: A hashable object to use as a seed. Use None to use the current
         timestamp.
     """
+    self.is_using_cloud_datastore_emulator = False
+    self.emulator_port = None
+
     self.SetProbability(probability)
     self.SetSeed(seed)
 
@@ -2063,17 +2083,32 @@ class PseudoRandomHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
     """Change the probability of a transaction applying.
 
     Args:
-      probability: A number between 0 and 1 that determins the probability of a
+      probability: A number between 0 and 1 that determines the probability of a
         transaction applying before a global query is run.
     """
     if probability < 0 or probability > 1:
       raise TypeError('probability must be a number between 0 and 1, found %r' %
                       probability)
     self._probability = probability
+    if self.is_using_cloud_datastore_emulator:
+      UpdateEmulatorConfig(port=self.emulator_port, consistency_policy=self)
 
   def SetSeed(self, seed):
     """Reset the seed."""
     self._random = random.Random(seed)
+    self._seed = seed
+    if self.is_using_cloud_datastore_emulator:
+      UpdateEmulatorConfig(port=self.emulator_port, consistency_policy=self)
+
+  @property
+  def probability(self):
+    """Return the probability of applying a job."""
+    return self._probability
+
+  @property
+  def random_seed(self):
+    """Return the random seed."""
+    return self._seed
 
   def _ShouldApply(self, txn, meta_data):
     return self._random.random() < self._probability
@@ -2119,21 +2154,35 @@ class BaseTransactionManager(object):
 
     self._txn_map = {}
 
-  def BeginTransaction(self, app, allow_multiple_eg):
+  def BeginTransaction(self, app, allow_multiple_eg, previous_transaction=None,
+                       mode=datastore_pb.BeginTransactionRequest.UNKNOWN):
     """Start a transaction on the given app.
 
     Args:
       app: A string representing the app for which to start the transaction.
       allow_multiple_eg: True if transactions can span multiple entity groups.
+      previous_transaction: The transaction to reset.
+      mode: Mode of the transaction.
 
     Returns:
       A datastore_pb.Transaction for the created transaction
     """
-    Check(not (allow_multiple_eg and isinstance(
-        self._consistency_policy, MasterSlaveConsistencyPolicy)),
-          'transactions on multiple entity groups only allowed with the '
-          'High Replication datastore')
-    txn = self._BeginTransaction(app, allow_multiple_eg)
+    Check((previous_transaction is None) or
+          mode == datastore_pb.BeginTransactionRequest.READ_WRITE,
+          'previous_transaction can only be set in READ_WRITE mode')
+
+    if previous_transaction is not None:
+      previous_live_txn = self._txn_map.get(previous_transaction.handle())
+
+      if previous_live_txn is not None:
+
+
+        if previous_live_txn._app == app:
+          Check(previous_live_txn._allow_multiple_eg == allow_multiple_eg,
+                'Transaction should have same options as previous_transaction')
+          previous_live_txn.Rollback()
+
+    txn = self._BeginTransaction(app, allow_multiple_eg, mode)
     self._txn_map[id(txn)] = txn
     transaction = datastore_pb.Transaction()
     transaction.set_app(app)
@@ -2210,9 +2259,10 @@ class BaseTransactionManager(object):
     finally:
       self._meta_data_lock.release()
 
-  def _BeginTransaction(self, app, allow_multiple_eg):
+  def _BeginTransaction(self, app, allow_multiple_eg,
+                        mode=datastore_pb.BeginTransactionRequest.UNKNOWN):
     """Starts a transaction without storing it in the txn_map."""
-    return LiveTxn(self, app, allow_multiple_eg)
+    return LiveTxn(self, app, allow_multiple_eg, mode)
 
   def _GrabSnapshot(self, entity_group):
     """Grabs a consistent snapshot of the given entity group.
@@ -2402,9 +2452,7 @@ class BaseIndexManager(object):
     Check(index.state() == stored_index.state() or
           index.state() in self._INDEX_STATE_TRANSITIONS[stored_index.state()],
           'cannot move index state from %s to %s' %
-          (entity_pb.CompositeIndex.State_Name(stored_index.state()),
-           (entity_pb.CompositeIndex.State_Name(index.state()))))
-
+          (stored_index.state(), index.state()))
 
     self.__indexes_lock.acquire()
     try:
@@ -2435,6 +2483,21 @@ class BaseIndexManager(object):
 
   def _OnIndexChange(self, app_id):
     pass
+
+
+def _CheckAutoIdPolicy(auto_id_policy):
+  """Check value of auto_id_policy.
+
+  Args:
+    auto_id_policy: string constant.
+
+  Raises:
+    TypeError: if auto_id_policy is not one of SEQUENTIAL or SCATTERED.
+  """
+  valid_policies = (SEQUENTIAL, SCATTERED)
+  if auto_id_policy not in valid_policies:
+    raise TypeError('auto_id_policy must be in %s, found %s instead',
+                    valid_policies, auto_id_policy)
 
 
 class BaseDatastore(BaseTransactionManager, BaseIndexManager):
@@ -2533,7 +2596,9 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     if raw_query.has_ancestor() and raw_query.kind() not in self._pseudo_kinds:
 
-      txn = self._BeginTransaction(raw_query.app(), False)
+      txn = self._BeginTransaction(
+          raw_query.app(), False,
+          datastore_pb.BeginTransactionRequest.READ_ONLY)
       return txn.GetQueryCursor(raw_query, filters, orders, index_list)
 
 
@@ -2815,13 +2880,20 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     retries = 0
     backoff = _INITIAL_RETRY_DELAY_MS / 1000.0
     while True:
+      txn = self._BeginTransaction(app, False)
+
       try:
-        txn = self._BeginTransaction(app, False)
         for value in values:
           op(txn, value)
         txn.Commit()
         return txn
       except apiproxy_errors.ApplicationError, e:
+        try:
+          txn.Rollback()
+        except Exception:
+
+          logging.debug('Exception in rollback.', exc_info=True)
+
         if e.application_error == datastore_pb.Error.CONCURRENT_TRANSACTION:
 
           retries += 1
@@ -2874,10 +2946,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     Raises:
       TypeError: if auto_id_policy is not one of SEQUENTIAL or SCATTERED.
     """
-    valid_policies = (SEQUENTIAL, SCATTERED)
-    if auto_id_policy not in valid_policies:
-      raise TypeError('auto_id_policy must be in %s, found %s instead',
-                      valid_policies, auto_id_policy)
+    _CheckAutoIdPolicy(auto_id_policy)
     self._auto_id_policy = auto_id_policy
 
 
@@ -2887,7 +2956,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     self.Flush()
 
   def Close(self):
-    """Closes the Datstore, writing any buffered data."""
+    """Closes the Datastore, writing any buffered data."""
     self.Write()
 
   def _GetQueryCursor(self, query, filters, orders, index_list):
@@ -2999,7 +3068,9 @@ class EntityGroupPseudoKind(object):
     """
 
     if not txn:
-      txn = self._stub._BeginTransaction(key.app(), False)
+      txn = self._stub._BeginTransaction(
+          key.app(), False,
+          datastore_pb.BeginTransactionRequest.READ_ONLY)
       try:
         return self.Get(txn, key)
       finally:
@@ -3342,7 +3413,9 @@ class DatastoreStub(object):
   def _Dynamic_BeginTransaction(self, req, transaction):
     CheckAppId(self._trusted, self._app_id, req.app())
     transaction.CopyFrom(self._datastore.BeginTransaction(
-        req.app(), req.allow_multiple_eg()))
+        req.app(), req.allow_multiple_eg(),
+        req.previous_transaction() if req.has_previous_transaction() else None,
+        req.mode()))
 
   def _Dynamic_Commit(self, transaction, res):
     CheckAppId(self._trusted, self._app_id, transaction.app())
@@ -3397,7 +3470,7 @@ class DatastoreStub(object):
       allocate_ids_response.set_end(end)
     else:
       for reference in allocate_ids_request.reserve_list():
-        CheckAppId(reference.app(), self._trusted, self._app_id)
+        CheckReference(self._trusted, self._app_id, reference)
       self._datastore._AllocateIds(allocate_ids_request.reserve_list())
       allocate_ids_response.set_start(0)
       allocate_ids_response.set_end(0)
@@ -4000,6 +4073,11 @@ class StubServiceConverter(object):
     v3_req = datastore_pb.BeginTransactionRequest()
     v3_req.set_app(app_id)
     v3_req.set_allow_multiple_eg(True)
+    if v1_req.transaction_options.HasField('read_only'):
+      v3_req.set_mode(datastore_pb.BeginTransactionRequest.READ_ONLY)
+    elif v1_req.transaction_options.HasField('read_write'):
+      v3_req.set_mode(datastore_pb.BeginTransactionRequest.READ_WRITE)
+
     return v3_req
 
   def v3_to_v1_begin_transaction_resp(self, v3_resp):
@@ -4579,7 +4657,7 @@ class StubServiceConverter(object):
     """Converts a v3 QueryResult to a v4 ContinueQueryResponse.
 
     Args:
-      v3_resp: a datstore_pb.QueryResult
+      v3_resp: a datastore_pb.QueryResult
 
     Returns:
       a datastore_v4_pb.ContinueQueryResponse
@@ -5081,8 +5159,8 @@ def _CalculateWriteOps(composite_indexes, old_entity, new_entity):
 
   Args:
     composite_indexes: The composite_indexes for the kind of the entities.
-    old_entity: Entity representing the current state in the Datstore.
-    new_entity: Entity representing the desired state in the Datstore.
+    old_entity: Entity representing the current state in the Datastore.
+    new_entity: Entity representing the desired state in the Datastore.
 
   Returns:
     A tuple of size 2, where the first value is the number of entity writes and
@@ -5339,3 +5417,81 @@ def _SetBeforeAscending(position, first_direction):
   position.set_before_ascending(
       position.before()
       != (first_direction == datastore_pb.Query_Order.DESCENDING))
+
+
+def _CheckConsistencyPolicyForCloudEmulator(consistency_policy):
+  """Check if a consistency policy is supported by GCD Emulator.
+
+  Args:
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+
+  Raises:
+    UnsupportedConsistencyPolicyError: Consistency policy is not an instance
+      of the above two policies.
+  """
+  if not isinstance(
+      consistency_policy, (
+          MasterSlaveConsistencyPolicy, PseudoRandomHRConsistencyPolicy)):
+    raise TypeError(
+        'Using Cloud Datastore Emulator, consistency policy must be in in '
+        '(%s, %s), found %s instead' % (
+            MasterSlaveConsistencyPolicy.__name__,
+            PseudoRandomHRConsistencyPolicy.__name__,
+            consistency_policy.__class__))
+
+
+def _BuildEmulatorConfigJson(auto_id_policy=None, consistency_policy=None):
+  """Update the emulator config with its client side cache.
+
+  Args:
+    auto_id_policy: A string indicating how GCD Emulator assigns auto IDs,
+      should be either SEQUENTIAL or SCATTERED.
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+
+  Returns:
+    A dict representing emulator_config.
+  """
+
+
+  emulator_config = {}
+  if auto_id_policy:
+    _CheckAutoIdPolicy(auto_id_policy)
+    emulator_config['idAllocationPolicy'] = {'policy': auto_id_policy.upper()}
+  if consistency_policy:
+    _CheckConsistencyPolicyForCloudEmulator(consistency_policy)
+    emulator_config['jobPolicy'] = {}
+    if isinstance(consistency_policy, MasterSlaveConsistencyPolicy):
+      emulator_config['jobPolicy']['forceStrongConsistency'] = True
+    else:
+      emulator_config['jobPolicy'] = {
+          'probabilityJobPolicy': {
+              'randomSeed': consistency_policy.random_seed,
+              'unappliedJobPercentage': 100.0 * (
+                  1.0 - consistency_policy.probability)}
+      }
+  return emulator_config
+
+
+def UpdateEmulatorConfig(
+    port, auto_id_policy=None, consistency_policy=None):
+  """Update the cloud datastore emulator's config with its client side cache.
+
+  Args:
+    port: A integer indicating the port number of emulator.
+    auto_id_policy: A string indicating how GCD Emulator assigns auto IDs,
+      should be either SEQUENTIAL or SCATTERED.
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+  """
+  emulator_config = _BuildEmulatorConfigJson(auto_id_policy, consistency_policy)
+  global _EMULATOR_CONFIG_CACHE
+  if not _EMULATOR_CONFIG_CACHE or _EMULATOR_CONFIG_CACHE != emulator_config:
+    connection = httplib.HTTPConnection('localhost', port)
+    connection.request('PATCH', '/v1/config', json.dumps(emulator_config),
+                       {'Content-Type': 'application/json'})
+    response = connection.getresponse()
+
+    response.read()
+    _EMULATOR_CONFIG_CACHE = emulator_config

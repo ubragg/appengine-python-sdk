@@ -18,11 +18,19 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+import base64
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+try:
+  _net_proto___parse__python = None
+except ImportError:
+  _net_proto___parse__python = None
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -126,6 +134,33 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
 
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.FileServiceErrors', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.FileServiceErrors')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.FileServiceErrors')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.FileServiceErrors', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.FileServiceErrors', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.FileServiceErrors', s)
+
+
   def Equals(self, x):
     if x is self: return 1
     return 1
@@ -156,7 +191,7 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -166,7 +201,7 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -181,6 +216,12 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.FileServiceErrors'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnNzeglFcnJvckNvZGWLAZIBAk9LmAEAjAGLAZIBG0FQSV9URU1QT1JBUklMWV9VTkFWQUlMQUJMRZgBAYwBiwGSARFSRVFVRVNUX1RPT19MQVJHRZgBA4wBiwGSARJSRVNQT05TRV9UT09fTEFSR0WYAQSMAYsBkgERSU5WQUxJRF9GSUxFX05BTUWYAQWMAYsBkgEXT1BFUkFUSU9OX05PVF9TVVBQT1JURUSYAQaMAYsBkgEISU9fRVJST1KYAQeMAYsBkgERUEVSTUlTU0lPTl9ERU5JRUSYAQiMAYsBkgESV1JPTkdfQ09OVEVOVF9UWVBFmAEJjAGLAZIBD0ZJTEVfTk9UX09QRU5FRJgBCowBiwGSAQ9XUk9OR19PUEVOX01PREWYAQuMAYsBkgEXRVhDTFVTSVZFX0xPQ0tfUkVRVUlSRUSYAQyMAYsBkgEcRklMRV9URU1QT1JBUklMWV9VTkFWQUlMQUJMRZgBDYwBiwGSAQ9FWElTVEVOQ0VfRVJST1KYAWSMAYsBkgESRklOQUxJWkFUSU9OX0VSUk9SmAFljAGLAZIBGFVOU1VQUE9SVEVEX0NPTlRFTlRfVFlQRZgBZowBiwGSAQlSRUFEX09OTFmYAWeMAYsBkgEVRVhDTFVTSVZFX0xPQ0tfRkFJTEVEmAFojAGLAZIBIkVYSVNURU5DRV9FUlJPUl9NRVRBREFUQV9OT1RfRk9VTkSYAWmMAYsBkgEeRVhJU1RFTkNFX0VSUk9SX01FVEFEQVRBX0ZPVU5EmAFqjAGLAZIBIUVYSVNURU5DRV9FUlJPUl9TSEFSRElOR19NSVNNQVRDSJgBa4wBiwGSARhGSU5BTElaQVRJT05fSU5fUFJPR1JFU1OYAWyMAYsBkgEgRVhJU1RFTkNFX0VSUk9SX09CSkVDVF9OT1RfRk9VTkSYAW2MAYsBkgEgRVhJU1RFTkNFX0VSUk9SX0JVQ0tFVF9OT1RfRk9VTkSYAW6MAYsBkgEZU0VRVUVOQ0VfS0VZX09VVF9PRl9PUkRFUpgBrAKMAYsBkgENT1VUX09GX0JPVU5EU5gB9AOMAYsBkgETR0xPQlNfTk9UX1NVUFBPUlRFRJgB2ASMAYsBkgEXRklMRV9OQU1FX05PVF9TUEVDSUZJRUSYAb0FjAGLAZIBE0ZJTEVfTkFNRV9TUEVDSUZJRUSYAb4FjAGLAZIBE0ZJTEVfQUxSRUFEWV9FWElTVFOYAb8FjAGLAZIBF1VOU1VQUE9SVEVEX0ZJTEVfU1lTVEVNmAHABYwBiwGSARFJTlZBTElEX1BBUkFNRVRFUpgBwQWMAYsBkgEXU0hVRkZMRVJfSU5URVJOQUxfRVJST1KYAaAGjAGLAZIBGVNIVUZGTEVfUkVRVUVTVF9UT09fTEFSR0WYAaEGjAGLAZIBFkRVUExJQ0FURV9TSFVGRkxFX05BTUWYAaIGjAGLAZIBFVNIVUZGTEVfTk9UX0FWQUlMQUJMRZgBowaMAYsBkgEgU0hVRkZMRVJfVEVNUE9SQVJJTFlfVU5BVkFJTEFCTEWYAYQHjAGLAZIBDk1BWF9FUlJPUl9DT0RFmAGPTowBdLoBgiIKJ2FwcGhvc3RpbmcvYXBpL2ZpbGVzL2ZpbGVfc2VydmljZS5wcm90bxIQYXBwaG9zdGluZy5maWxlcyKuCAoRRmlsZVNlcnZpY2VFcnJvcnMimAgKCUVycm9yQ29kZRIGCgJPSxAAEh8KG0FQSV9URU1QT1JBUklMWV9VTkFWQUlMQUJMRRABEhUKEVJFUVVFU1RfVE9PX0xBUkdFEAMSFgoSUkVTUE9OU0VfVE9PX0xBUkdFEAQSFQoRSU5WQUxJRF9GSUxFX05BTUUQBRIbChdPUEVSQVRJT05fTk9UX1NVUFBPUlRFRBAGEgwKCElPX0VSUk9SEAcSFQoRUEVSTUlTU0lPTl9ERU5JRUQQCBIWChJXUk9OR19DT05URU5UX1RZUEUQCRITCg9GSUxFX05PVF9PUEVORUQQChITCg9XUk9OR19PUEVOX01PREUQCxIbChdFWENMVVNJVkVfTE9DS19SRVFVSVJFRBAMEiAKHEZJTEVfVEVNUE9SQVJJTFlfVU5BVkFJTEFCTEUQDRITCg9FWElTVEVOQ0VfRVJST1IQZBIWChJGSU5BTElaQVRJT05fRVJST1IQZRIcChhVTlNVUFBPUlRFRF9DT05URU5UX1RZUEUQZhINCglSRUFEX09OTFkQZxIZChVFWENMVVNJVkVfTE9DS19GQUlMRUQQaBImCiJFWElTVEVOQ0VfRVJST1JfTUVUQURBVEFfTk9UX0ZPVU5EEGkSIgoeRVhJU1RFTkNFX0VSUk9SX01FVEFEQVRBX0ZPVU5EEGoSJQohRVhJU1RFTkNFX0VSUk9SX1NIQVJESU5HX01JU01BVENIEGsSHAoYRklOQUxJWkFUSU9OX0lOX1BST0dSRVNTEGwSJAogRVhJU1RFTkNFX0VSUk9SX09CSkVDVF9OT1RfRk9VTkQQbRIkCiBFWElTVEVOQ0VfRVJST1JfQlVDS0VUX05PVF9GT1VORBBuEh4KGVNFUVVFTkNFX0tFWV9PVVRfT0ZfT1JERVIQrAISEgoNT1VUX09GX0JPVU5EUxD0AxIYChNHTE9CU19OT1RfU1VQUE9SVEVEENgEEhwKF0ZJTEVfTkFNRV9OT1RfU1BFQ0lGSUVEEL0FEhgKE0ZJTEVfTkFNRV9TUEVDSUZJRUQQvgUSGAoTRklMRV9BTFJFQURZX0VYSVNUUxC/BRIcChdVTlNVUFBPUlRFRF9GSUxFX1NZU1RFTRDABRIWChFJTlZBTElEX1BBUkFNRVRFUhDBBRIcChdTSFVGRkxFUl9JTlRFUk5BTF9FUlJPUhCgBhIeChlTSFVGRkxFX1JFUVVFU1RfVE9PX0xBUkdFEKEGEhsKFkRVUExJQ0FURV9TSFVGRkxFX05BTUUQogYSGgoVU0hVRkZMRV9OT1RfQVZBSUxBQkxFEKMGEiUKIFNIVUZGTEVSX1RFTVBPUkFSSUxZX1VOQVZBSUxBQkxFEIQHEhMKDk1BWF9FUlJPUl9DT0RFEI9OIi4KCEtleVZhbHVlEg8KA2tleRgBIAIoDEICCAESEQoFdmFsdWUYAiACKAxCAggBIkcKCUtleVZhbHVlcxIPCgNrZXkYASACKAxCAggBEhEKBXZhbHVlGAIgAygMQgIIARIWCgdwYXJ0aWFsGAMgASgIOgVmYWxzZSJNCg9GaWxlQ29udGVudFR5cGUiOgoLQ29udGVudFR5cGUSBwoDUkFXEAASEAoMREVQUkVDQVRFRF8xEAISEAoMSU5WQUxJRF9UWVBFEH8ihgIKDUNyZWF0ZVJlcXVlc3QSEgoKZmlsZXN5c3RlbRgBIAIoCRJDCgxjb250ZW50X3R5cGUYAiACKA4yLS5hcHBob3N0aW5nLmZpbGVzLkZpbGVDb250ZW50VHlwZS5Db250ZW50VHlwZRISCghmaWxlbmFtZRgDIAEoCToAEj0KCnBhcmFtZXRlcnMYBCADKAsyKS5hcHBob3N0aW5nLmZpbGVzLkNyZWF0ZVJlcXVlc3QuUGFyYW1ldGVyEh8KF2V4cGlyYXRpb25fdGltZV9zZWNvbmRzGAUgASgDGigKCVBhcmFtZXRlchIMCgRuYW1lGAEgAigJEg0KBXZhbHVlGAIgAigJIiIKDkNyZWF0ZVJlc3BvbnNlEhAKCGZpbGVuYW1lGAEgAigJIqUCCgtPcGVuUmVxdWVzdBIQCghmaWxlbmFtZRgBIAIoCRJDCgxjb250ZW50X3R5cGUYAiACKA4yLS5hcHBob3N0aW5nLmZpbGVzLkZpbGVDb250ZW50VHlwZS5Db250ZW50VHlwZRI5CglvcGVuX21vZGUYAyACKA4yJi5hcHBob3N0aW5nLmZpbGVzLk9wZW5SZXF1ZXN0Lk9wZW5Nb2RlEh0KDmV4Y2x1c2l2ZV9sb2NrGAQgASgIOgVmYWxzZRIeCg9idWZmZXJlZF9vdXRwdXQYBSABKAg6BWZhbHNlEiMKF29wZW5fbGVhc2VfdGltZV9zZWNvbmRzGAYgASgFOgIzMCIgCghPcGVuTW9kZRIKCgZBUFBFTkQQARIICgRSRUFEEAIiDgoMT3BlblJlc3BvbnNlIjkKDENsb3NlUmVxdWVzdBIQCghmaWxlbmFtZRgBIAIoCRIXCghmaW5hbGl6ZRgCIAEoCDoFZmFsc2UiDwoNQ2xvc2VSZXNwb25zZSKiAQoIRmlsZVN0YXQSEAoIZmlsZW5hbWUYASACKAkSQwoMY29udGVudF90eXBlGAIgAigOMi0uYXBwaG9zdGluZy5maWxlcy5GaWxlQ29udGVudFR5cGUuQ29udGVudFR5cGUSEQoJZmluYWxpemVkGAMgAigIEg4KBmxlbmd0aBgEIAEoAxINCgVjdGltZRgFIAEoAxINCgVtdGltZRgGIAEoAyIyCgtTdGF0UmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRIRCglmaWxlX2dsb2IYAiABKAkiWQoMU3RhdFJlc3BvbnNlEigKBHN0YXQYASADKAsyGi5hcHBob3N0aW5nLmZpbGVzLkZpbGVTdGF0Eh8KEG1vcmVfZmlsZXNfZm91bmQYAiACKAg6BWZhbHNlIk0KDUFwcGVuZFJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkSEAoEZGF0YRgCIAIoDEICCAESGAoMc2VxdWVuY2Vfa2V5GAMgASgJQgIIASIQCg5BcHBlbmRSZXNwb25zZSIhCg1EZWxldGVSZXF1ZXN0EhAKCGZpbGVuYW1lGAEgAigJIhAKDkRlbGV0ZVJlc3BvbnNlIj8KC1JlYWRSZXF1ZXN0EhAKCGZpbGVuYW1lGAEgAigJEgsKA3BvcxgCIAIoAxIRCgltYXhfYnl0ZXMYAyACKAMiIAoMUmVhZFJlc3BvbnNlEhAKBGRhdGEYASACKAxCAggBImQKE1JlYWRLZXlWYWx1ZVJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkSFQoJc3RhcnRfa2V5GAIgAigMQgIIARIRCgltYXhfYnl0ZXMYAyACKAMSEQoJdmFsdWVfcG9zGAQgASgDIrABChRSZWFkS2V5VmFsdWVSZXNwb25zZRI9CgRkYXRhGAEgAygLMi8uYXBwaG9zdGluZy5maWxlcy5SZWFkS2V5VmFsdWVSZXNwb25zZS5LZXlWYWx1ZRIQCghuZXh0X2tleRgCIAEoDBIXCg90cnVuY2F0ZWRfdmFsdWUYAyABKAgaLgoIS2V5VmFsdWUSDwoDa2V5GAEgAigMQgIIARIRCgV2YWx1ZRgCIAIoDEICCAEiiQIKDFNodWZmbGVFbnVtcyIwCgtJbnB1dEZvcm1hdBIhCh1SRUNPUkRTX0tFWV9WQUxVRV9QUk9UT19JTlBVVBABIjgKDE91dHB1dEZvcm1hdBIoCiRSRUNPUkRTX0tFWV9NVUxUSV9WQUxVRV9QUk9UT19PVVRQVVQQASKMAQoGU3RhdHVzEgsKB1VOS05PV04QARILCgdSVU5OSU5HEAISCwoHU1VDQ0VTUxADEgsKB0ZBSUxVUkUQBBIRCg1JTlZBTElEX0lOUFVUEAUSGQoVT1VUUFVUX0FMUkVBRFlfRVhJU1RTEAYSIAocSU5DT1JSRUNUX1NIVUZGTEVfU0laRV9CWVRFUxAHIoQBChlTaHVmZmxlSW5wdXRTcGVjaWZpY2F0aW9uElkKBmZvcm1hdBgBIAEoDjIqLmFwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZUVudW1zLklucHV0Rm9ybWF0Oh1SRUNPUkRTX0tFWV9WQUxVRV9QUk9UT19JTlBVVBIMCgRwYXRoGAIgAigJIo0BChpTaHVmZmxlT3V0cHV0U3BlY2lmaWNhdGlvbhJhCgZmb3JtYXQYASABKA4yKy5hcHBob3N0aW5nLmZpbGVzLlNodWZmbGVFbnVtcy5PdXRwdXRGb3JtYXQ6JFJFQ09SRFNfS0VZX01VTFRJX1ZBTFVFX1BST1RPX09VVFBVVBIMCgRwYXRoGAIgAygJItgCCg5TaHVmZmxlUmVxdWVzdBIUCgxzaHVmZmxlX25hbWUYASACKAkSOgoFaW5wdXQYAiADKAsyKy5hcHBob3N0aW5nLmZpbGVzLlNodWZmbGVJbnB1dFNwZWNpZmljYXRpb24SPAoGb3V0cHV0GAMgAigLMiwuYXBwaG9zdGluZy5maWxlcy5TaHVmZmxlT3V0cHV0U3BlY2lmaWNhdGlvbhIaChJzaHVmZmxlX3NpemVfYnl0ZXMYBCACKAMSOwoIY2FsbGJhY2sYBSACKAsyKS5hcHBob3N0aW5nLmZpbGVzLlNodWZmbGVSZXF1ZXN0LkNhbGxiYWNrGl0KCENhbGxiYWNrEgsKA3VybBgBIAIoCRIWCg5hcHBfdmVyc2lvbl9pZBgCIAEoCRIUCgZtZXRob2QYAyABKAk6BFBPU1QSFgoFcXVldWUYBCABKAk6B2RlZmF1bHQiEQoPU2h1ZmZsZVJlc3BvbnNlIi8KF0dldFNodWZmbGVTdGF0dXNSZXF1ZXN0EhQKDHNodWZmbGVfbmFtZRgBIAIoCSJmChhHZXRTaHVmZmxlU3RhdHVzUmVzcG9uc2USNQoGc3RhdHVzGAEgAigOMiUuYXBwaG9zdGluZy5maWxlcy5TaHVmZmxlRW51bXMuU3RhdHVzEhMKC2Rlc2NyaXB0aW9uGAIgASgJIhgKFkdldENhcGFiaWxpdGllc1JlcXVlc3QiSAoXR2V0Q2FwYWJpbGl0aWVzUmVzcG9uc2USEgoKZmlsZXN5c3RlbRgBIAMoCRIZChFzaHVmZmxlX2F2YWlsYWJsZRgCIAIoCCIjCg9GaW5hbGl6ZVJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkiEgoQRmluYWxpemVSZXNwb25zZSIfCh1HZXREZWZhdWx0R3NCdWNrZXROYW1lUmVxdWVzdCJACh5HZXREZWZhdWx0R3NCdWNrZXROYW1lUmVzcG9uc2USHgoWZGVmYXVsdF9nc19idWNrZXRfbmFtZRgBIAEoCSJQCg5MaXN0RGlyUmVxdWVzdBIMCgRwYXRoGAEgAigJEg4KBm1hcmtlchgCIAEoCRIQCghtYXhfa2V5cxgDIAEoAxIOCgZwcmVmaXgYBCABKAkiJAoPTGlzdERpclJlc3BvbnNlEhEKCWZpbGVuYW1lcxgBIAMoCUIzCh5jb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuZmlsZXMQAigCQg1GaWxlU2VydmljZVBi"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class KeyValue(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -221,6 +262,33 @@ class KeyValue(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_key()): self.set_key(x.key())
     if (x.has_value()): self.set_value(x.value())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.KeyValue', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.KeyValue')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.KeyValue')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.KeyValue', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.KeyValue', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.KeyValue', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -287,7 +355,7 @@ class KeyValue(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -299,7 +367,7 @@ class KeyValue(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey = 1
   kvalue = 2
@@ -320,6 +388,12 @@ class KeyValue(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.KeyValue'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KGWFwcGhvc3RpbmcuZmlsZXMuS2V5VmFsdWUTGgNrZXkgASgCMAk4AqMBqgEFY3R5cGWyAQRDb3JkpAEUExoFdmFsdWUgAigCMAk4AqMBqgEFY3R5cGWyAQRDb3JkpAEUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class KeyValues(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -375,8 +449,35 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_key()): self.set_key(x.key())
-    for i in xrange(x.value_size()): self.add_value(x.value(i))
+    for i in range(x.value_size()): self.add_value(x.value(i))
     if (x.has_partial()): self.set_partial(x.partial())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.KeyValues', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.KeyValues')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.KeyValues')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.KeyValues', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.KeyValues', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.KeyValues', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -401,7 +502,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.key_))
     n += 1 * len(self.value_)
-    for i in xrange(len(self.value_)): n += self.lengthString(len(self.value_[i]))
+    for i in range(len(self.value_)): n += self.lengthString(len(self.value_[i]))
     if (self.has_partial_): n += 2
     return n + 1
 
@@ -411,7 +512,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.key_))
     n += 1 * len(self.value_)
-    for i in xrange(len(self.value_)): n += self.lengthString(len(self.value_[i]))
+    for i in range(len(self.value_)): n += self.lengthString(len(self.value_[i]))
     if (self.has_partial_): n += 2
     return n
 
@@ -423,7 +524,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.key_)
-    for i in xrange(len(self.value_)):
+    for i in range(len(self.value_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.value_[i])
     if (self.has_partial_):
@@ -434,7 +535,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
     if (self.has_key_):
       out.putVarInt32(10)
       out.putPrefixedString(self.key_)
-    for i in xrange(len(self.value_)):
+    for i in range(len(self.value_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.value_[i])
     if (self.has_partial_):
@@ -455,7 +556,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -473,7 +574,7 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey = 1
   kvalue = 2
@@ -497,6 +598,12 @@ class KeyValues(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.KeyValues'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KGmFwcGhvc3RpbmcuZmlsZXMuS2V5VmFsdWVzExoDa2V5IAEoAjAJOAKjAaoBBWN0eXBlsgEEQ29yZKQBFBMaBXZhbHVlIAIoAjAJOAOjAaoBBWN0eXBlsgEEQ29yZKQBFBMaB3BhcnRpYWwgAygAMAg4AUIFZmFsc2WjAaoBB2RlZmF1bHSyAQVmYWxzZaQBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FileContentType(ProtocolBuffer.ProtocolMessage):
 
 
@@ -522,6 +629,33 @@ class FileContentType(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
 
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.FileContentType', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.FileContentType')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.FileContentType')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.FileContentType', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.FileContentType', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.FileContentType', s)
+
+
   def Equals(self, x):
     if x is self: return 1
     return 1
@@ -552,7 +686,7 @@ class FileContentType(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -562,7 +696,7 @@ class FileContentType(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -577,6 +711,12 @@ class FileContentType(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.FileContentType'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuZmlsZXMuRmlsZUNvbnRlbnRUeXBlc3oLQ29udGVudFR5cGWLAZIBA1JBV5gBAIwBiwGSAQxERVBSRUNBVEVEXzGYAQKMAYsBkgEMSU5WQUxJRF9UWVBFmAF/jAF0wgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateRequest_Parameter(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -617,6 +757,33 @@ class CreateRequest_Parameter(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_name()): self.set_name(x.name())
     if (x.has_value()): self.set_value(x.value())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.CreateRequest_Parameter', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.CreateRequest_Parameter')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.CreateRequest_Parameter')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.CreateRequest_Parameter', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.CreateRequest_Parameter', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.CreateRequest_Parameter', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -683,7 +850,7 @@ class CreateRequest_Parameter(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -695,7 +862,7 @@ class CreateRequest_Parameter(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kvalue = 2
@@ -716,6 +883,12 @@ class CreateRequest_Parameter(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.CreateRequest_Parameter'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuZmlsZXMuQ3JlYXRlUmVxdWVzdF9QYXJhbWV0ZXITGgRuYW1lIAEoAjAJOAIUExoFdmFsdWUgAigCMAk4AhTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3JzygEoYXBwaG9zdGluZy5maWxlcy5DcmVhdGVSZXF1ZXN0LlBhcmFtZXRlcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateRequest(ProtocolBuffer.ProtocolMessage):
   has_filesystem_ = 0
   filesystem_ = ""
@@ -804,8 +977,35 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_filesystem()): self.set_filesystem(x.filesystem())
     if (x.has_content_type()): self.set_content_type(x.content_type())
     if (x.has_filename()): self.set_filename(x.filename())
-    for i in xrange(x.parameters_size()): self.add_parameters().CopyFrom(x.parameters(i))
+    for i in range(x.parameters_size()): self.add_parameters().CopyFrom(x.parameters(i))
     if (x.has_expiration_time_seconds()): self.set_expiration_time_seconds(x.expiration_time_seconds())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.CreateRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.CreateRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.CreateRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.CreateRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.CreateRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.CreateRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -842,7 +1042,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.content_type_)
     if (self.has_filename_): n += 1 + self.lengthString(len(self.filename_))
     n += 1 * len(self.parameters_)
-    for i in xrange(len(self.parameters_)): n += self.lengthString(self.parameters_[i].ByteSize())
+    for i in range(len(self.parameters_)): n += self.lengthString(self.parameters_[i].ByteSize())
     if (self.has_expiration_time_seconds_): n += 1 + self.lengthVarInt64(self.expiration_time_seconds_)
     return n + 2
 
@@ -856,7 +1056,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
       n += self.lengthVarInt64(self.content_type_)
     if (self.has_filename_): n += 1 + self.lengthString(len(self.filename_))
     n += 1 * len(self.parameters_)
-    for i in xrange(len(self.parameters_)): n += self.lengthString(self.parameters_[i].ByteSizePartial())
+    for i in range(len(self.parameters_)): n += self.lengthString(self.parameters_[i].ByteSizePartial())
     if (self.has_expiration_time_seconds_): n += 1 + self.lengthVarInt64(self.expiration_time_seconds_)
     return n
 
@@ -875,7 +1075,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_filename_):
       out.putVarInt32(26)
       out.putPrefixedString(self.filename_)
-    for i in xrange(len(self.parameters_)):
+    for i in range(len(self.parameters_)):
       out.putVarInt32(34)
       out.putVarInt32(self.parameters_[i].ByteSize())
       self.parameters_[i].OutputUnchecked(out)
@@ -893,7 +1093,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_filename_):
       out.putVarInt32(26)
       out.putPrefixedString(self.filename_)
-    for i in xrange(len(self.parameters_)):
+    for i in range(len(self.parameters_)):
       out.putVarInt32(34)
       out.putVarInt32(self.parameters_[i].ByteSizePartial())
       self.parameters_[i].OutputPartial(out)
@@ -924,7 +1124,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -946,7 +1146,7 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilesystem = 1
   kcontent_type = 2
@@ -976,6 +1176,12 @@ class CreateRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.CreateRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHmFwcGhvc3RpbmcuZmlsZXMuQ3JlYXRlUmVxdWVzdBMaCmZpbGVzeXN0ZW0gASgCMAk4AhQTGgxjb250ZW50X3R5cGUgAigAMAU4AhQTGghmaWxlbmFtZSADKAIwCTgBQgCjAaoBB2RlZmF1bHSyAQIiIqQBFBMaCnBhcmFtZXRlcnMgBCgCMAs4A0ooYXBwaG9zdGluZy5maWxlcy5DcmVhdGVSZXF1ZXN0X1BhcmFtZXRlcqMBqgEFY3R5cGWyAQZwcm90bzKkARQTGhdleHBpcmF0aW9uX3RpbWVfc2Vjb25kcyAFKAAwAzgBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateResponse(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -1000,6 +1206,33 @@ class CreateResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.CreateResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.CreateResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.CreateResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.CreateResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.CreateResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.CreateResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1047,7 +1280,7 @@ class CreateResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1058,7 +1291,7 @@ class CreateResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
 
@@ -1076,6 +1309,12 @@ class CreateResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.CreateResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuZmlsZXMuQ3JlYXRlUmVzcG9uc2UTGghmaWxlbmFtZSABKAIwCTgCFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class OpenRequest(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1193,6 +1432,33 @@ class OpenRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_exclusive_lock()): self.set_exclusive_lock(x.exclusive_lock())
     if (x.has_buffered_output()): self.set_buffered_output(x.buffered_output())
     if (x.has_open_lease_time_seconds()): self.set_open_lease_time_seconds(x.open_lease_time_seconds())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.OpenRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.OpenRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.OpenRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.OpenRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.OpenRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.OpenRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1320,7 +1586,7 @@ class OpenRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1336,7 +1602,7 @@ class OpenRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kcontent_type = 2
@@ -1369,6 +1635,12 @@ class OpenRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.OpenRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuZmlsZXMuT3BlblJlcXVlc3QTGghmaWxlbmFtZSABKAIwCTgCFBMaDGNvbnRlbnRfdHlwZSACKAAwBTgCFBMaCW9wZW5fbW9kZSADKAAwBTgCaAAUExoOZXhjbHVzaXZlX2xvY2sgBCgAMAg4AUIFZmFsc2WjAaoBB2RlZmF1bHSyAQVmYWxzZaQBFBMaD2J1ZmZlcmVkX291dHB1dCAFKAAwCDgBQgVmYWxzZaMBqgEHZGVmYXVsdLIBBWZhbHNlpAEUExoXb3Blbl9sZWFzZV90aW1lX3NlY29uZHMgBigAMAU4AUICMzCjAaoBB2RlZmF1bHSyAQIzMKQBFHN6CE9wZW5Nb2RliwGSAQZBUFBFTkSYAQGMAYsBkgEEUkVBRJgBAowBdMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class OpenResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1378,6 +1650,33 @@ class OpenResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.OpenResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.OpenResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.OpenResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.OpenResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.OpenResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.OpenResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1409,7 +1708,7 @@ class OpenResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1419,7 +1718,7 @@ class OpenResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -1434,6 +1733,12 @@ class OpenResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.OpenResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuZmlsZXMuT3BlblJlc3BvbnNlwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CloseRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -1474,6 +1779,33 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_finalize()): self.set_finalize(x.finalize())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.CloseRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.CloseRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.CloseRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.CloseRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.CloseRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.CloseRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1535,7 +1867,7 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1547,7 +1879,7 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kfinalize = 2
@@ -1568,6 +1900,12 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.CloseRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuZmlsZXMuQ2xvc2VSZXF1ZXN0ExoIZmlsZW5hbWUgASgCMAk4AhQTGghmaW5hbGl6ZSACKAAwCDgBQgVmYWxzZaMBqgEHZGVmYXVsdLIBBWZhbHNlpAEUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CloseResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1577,6 +1915,33 @@ class CloseResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.CloseResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.CloseResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.CloseResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.CloseResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.CloseResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.CloseResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1608,7 +1973,7 @@ class CloseResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1618,7 +1983,7 @@ class CloseResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -1633,6 +1998,12 @@ class CloseResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.CloseResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHmFwcGhvc3RpbmcuZmlsZXMuQ2xvc2VSZXNwb25zZcIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FileStat(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -1737,6 +2108,33 @@ class FileStat(ProtocolBuffer.ProtocolMessage):
     if (x.has_length()): self.set_length(x.length())
     if (x.has_ctime()): self.set_ctime(x.ctime())
     if (x.has_mtime()): self.set_mtime(x.mtime())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.FileStat', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.FileStat')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.FileStat')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.FileStat', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.FileStat', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.FileStat', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1862,7 +2260,7 @@ class FileStat(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1878,7 +2276,7 @@ class FileStat(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kcontent_type = 2
@@ -1911,6 +2309,12 @@ class FileStat(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.FileStat'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KGWFwcGhvc3RpbmcuZmlsZXMuRmlsZVN0YXQTGghmaWxlbmFtZSABKAIwCTgCFBMaDGNvbnRlbnRfdHlwZSACKAAwBTgCFBMaCWZpbmFsaXplZCADKAAwCDgCFBMaBmxlbmd0aCAEKAAwAzgBFBMaBWN0aW1lIAUoADADOAEUExoFbXRpbWUgBigAMAM4ARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StatRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -1951,6 +2355,33 @@ class StatRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_file_glob()): self.set_file_glob(x.file_glob())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.StatRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.StatRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.StatRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.StatRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.StatRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.StatRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2007,7 +2438,7 @@ class StatRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2019,7 +2450,7 @@ class StatRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kfile_glob = 2
@@ -2040,6 +2471,12 @@ class StatRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.StatRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuZmlsZXMuU3RhdFJlcXVlc3QTGghmaWxlbmFtZSABKAIwCTgBFBMaCWZpbGVfZ2xvYiACKAIwCTgBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StatResponse(ProtocolBuffer.ProtocolMessage):
   has_more_files_found_ = 0
   more_files_found_ = 0
@@ -2080,8 +2517,35 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.stat_size()): self.add_stat().CopyFrom(x.stat(i))
+    for i in range(x.stat_size()): self.add_stat().CopyFrom(x.stat(i))
     if (x.has_more_files_found()): self.set_more_files_found(x.more_files_found())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.StatResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.StatResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.StatResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.StatResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.StatResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.StatResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2105,13 +2569,13 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.stat_)
-    for i in xrange(len(self.stat_)): n += self.lengthString(self.stat_[i].ByteSize())
+    for i in range(len(self.stat_)): n += self.lengthString(self.stat_[i].ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.stat_)
-    for i in xrange(len(self.stat_)): n += self.lengthString(self.stat_[i].ByteSizePartial())
+    for i in range(len(self.stat_)): n += self.lengthString(self.stat_[i].ByteSizePartial())
     if (self.has_more_files_found_):
       n += 2
     return n
@@ -2121,7 +2585,7 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_more_files_found()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.stat_)):
+    for i in range(len(self.stat_)):
       out.putVarInt32(10)
       out.putVarInt32(self.stat_[i].ByteSize())
       self.stat_[i].OutputUnchecked(out)
@@ -2129,7 +2593,7 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
     out.putBoolean(self.more_files_found_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.stat_)):
+    for i in range(len(self.stat_)):
       out.putVarInt32(10)
       out.putVarInt32(self.stat_[i].ByteSizePartial())
       self.stat_[i].OutputPartial(out)
@@ -2151,7 +2615,7 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2170,7 +2634,7 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstat = 1
   kmore_files_found = 2
@@ -2191,6 +2655,12 @@ class StatResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.StatResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuZmlsZXMuU3RhdFJlc3BvbnNlExoEc3RhdCABKAIwCzgDShlhcHBob3N0aW5nLmZpbGVzLkZpbGVTdGF0owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaEG1vcmVfZmlsZXNfZm91bmQgAigAMAg4AkIFZmFsc2WjAaoBB2RlZmF1bHSyAQVmYWxzZaQBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class AppendRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -2247,6 +2717,33 @@ class AppendRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_data()): self.set_data(x.data())
     if (x.has_sequence_key()): self.set_sequence_key(x.sequence_key())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.AppendRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.AppendRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.AppendRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.AppendRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.AppendRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.AppendRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2327,7 +2824,7 @@ class AppendRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2340,7 +2837,7 @@ class AppendRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kdata = 2
@@ -2364,6 +2861,12 @@ class AppendRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.AppendRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHmFwcGhvc3RpbmcuZmlsZXMuQXBwZW5kUmVxdWVzdBMaCGZpbGVuYW1lIAEoAjAJOAIUExoEZGF0YSACKAIwCTgCowGqAQVjdHlwZbIBBENvcmSkARQTGgxzZXF1ZW5jZV9rZXkgAygCMAk4AaMBqgEFY3R5cGWyAQRDb3JkpAEUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class AppendResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -2373,6 +2876,33 @@ class AppendResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.AppendResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.AppendResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.AppendResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.AppendResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.AppendResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.AppendResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2404,7 +2934,7 @@ class AppendResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2414,7 +2944,7 @@ class AppendResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -2429,6 +2959,12 @@ class AppendResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.AppendResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuZmlsZXMuQXBwZW5kUmVzcG9uc2XCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -2453,6 +2989,33 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.DeleteRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.DeleteRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.DeleteRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.DeleteRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.DeleteRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.DeleteRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2500,7 +3063,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2511,7 +3074,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
 
@@ -2529,6 +3092,12 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.DeleteRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHmFwcGhvc3RpbmcuZmlsZXMuRGVsZXRlUmVxdWVzdBMaCGZpbGVuYW1lIAEoAjAJOAIUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -2538,6 +3107,33 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.DeleteResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.DeleteResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.DeleteResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.DeleteResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.DeleteResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.DeleteResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2569,7 +3165,7 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2579,7 +3175,7 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -2594,6 +3190,12 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.DeleteResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuZmlsZXMuRGVsZXRlUmVzcG9uc2XCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ReadRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -2650,6 +3252,33 @@ class ReadRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_pos()): self.set_pos(x.pos())
     if (x.has_max_bytes()): self.set_max_bytes(x.max_bytes())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ReadRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ReadRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ReadRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ReadRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ReadRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ReadRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2735,7 +3364,7 @@ class ReadRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2748,7 +3377,7 @@ class ReadRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kpos = 2
@@ -2772,6 +3401,12 @@ class ReadRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ReadRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuZmlsZXMuUmVhZFJlcXVlc3QTGghmaWxlbmFtZSABKAIwCTgCFBMaA3BvcyACKAAwAzgCFBMaCW1heF9ieXRlcyADKAAwAzgCFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ReadResponse(ProtocolBuffer.ProtocolMessage):
   has_data_ = 0
   data_ = ""
@@ -2796,6 +3431,33 @@ class ReadResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_data()): self.set_data(x.data())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ReadResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ReadResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ReadResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ReadResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ReadResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ReadResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2843,7 +3505,7 @@ class ReadResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2854,7 +3516,7 @@ class ReadResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdata = 1
 
@@ -2872,6 +3534,12 @@ class ReadResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ReadResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuZmlsZXMuUmVhZFJlc3BvbnNlExoEZGF0YSABKAIwCTgCowGqAQVjdHlwZbIBBENvcmSkARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ReadKeyValueRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -2944,6 +3612,33 @@ class ReadKeyValueRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_start_key()): self.set_start_key(x.start_key())
     if (x.has_max_bytes()): self.set_max_bytes(x.max_bytes())
     if (x.has_value_pos()): self.set_value_pos(x.value_pos())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ReadKeyValueRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ReadKeyValueRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ReadKeyValueRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ReadKeyValueRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ReadKeyValueRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ReadKeyValueRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3043,7 +3738,7 @@ class ReadKeyValueRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3057,7 +3752,7 @@ class ReadKeyValueRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
   kstart_key = 2
@@ -3084,6 +3779,12 @@ class ReadKeyValueRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ReadKeyValueRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KJGFwcGhvc3RpbmcuZmlsZXMuUmVhZEtleVZhbHVlUmVxdWVzdBMaCGZpbGVuYW1lIAEoAjAJOAIUExoJc3RhcnRfa2V5IAIoAjAJOAKjAaoBBWN0eXBlsgEEQ29yZKQBFBMaCW1heF9ieXRlcyADKAAwAzgCFBMaCXZhbHVlX3BvcyAEKAAwAzgBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ReadKeyValueResponse_KeyValue(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -3124,6 +3825,33 @@ class ReadKeyValueResponse_KeyValue(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_key()): self.set_key(x.key())
     if (x.has_value()): self.set_value(x.value())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ReadKeyValueResponse_KeyValue', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ReadKeyValueResponse_KeyValue')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ReadKeyValueResponse_KeyValue')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ReadKeyValueResponse_KeyValue', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ReadKeyValueResponse_KeyValue', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ReadKeyValueResponse_KeyValue', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3190,7 +3918,7 @@ class ReadKeyValueResponse_KeyValue(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3202,7 +3930,7 @@ class ReadKeyValueResponse_KeyValue(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey = 1
   kvalue = 2
@@ -3223,6 +3951,12 @@ class ReadKeyValueResponse_KeyValue(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ReadKeyValueResponse_KeyValue'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KLmFwcGhvc3RpbmcuZmlsZXMuUmVhZEtleVZhbHVlUmVzcG9uc2VfS2V5VmFsdWUTGgNrZXkgASgCMAk4AqMBqgEFY3R5cGWyAQRDb3JkpAEUExoFdmFsdWUgAigCMAk4AqMBqgEFY3R5cGWyAQRDb3JkpAEUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9yc8oBLmFwcGhvc3RpbmcuZmlsZXMuUmVhZEtleVZhbHVlUmVzcG9uc2UuS2V5VmFsdWU="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
   has_next_key_ = 0
   next_key_ = ""
@@ -3278,9 +4012,36 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.data_size()): self.add_data().CopyFrom(x.data(i))
+    for i in range(x.data_size()): self.add_data().CopyFrom(x.data(i))
     if (x.has_next_key()): self.set_next_key(x.next_key())
     if (x.has_truncated_value()): self.set_truncated_value(x.truncated_value())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ReadKeyValueResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ReadKeyValueResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ReadKeyValueResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ReadKeyValueResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ReadKeyValueResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ReadKeyValueResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3302,7 +4063,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.data_)
-    for i in xrange(len(self.data_)): n += self.lengthString(self.data_[i].ByteSize())
+    for i in range(len(self.data_)): n += self.lengthString(self.data_[i].ByteSize())
     if (self.has_next_key_): n += 1 + self.lengthString(len(self.next_key_))
     if (self.has_truncated_value_): n += 2
     return n
@@ -3310,7 +4071,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.data_)
-    for i in xrange(len(self.data_)): n += self.lengthString(self.data_[i].ByteSizePartial())
+    for i in range(len(self.data_)): n += self.lengthString(self.data_[i].ByteSizePartial())
     if (self.has_next_key_): n += 1 + self.lengthString(len(self.next_key_))
     if (self.has_truncated_value_): n += 2
     return n
@@ -3321,7 +4082,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_truncated_value()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.data_)):
+    for i in range(len(self.data_)):
       out.putVarInt32(10)
       out.putVarInt32(self.data_[i].ByteSize())
       self.data_[i].OutputUnchecked(out)
@@ -3333,7 +4094,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
       out.putBoolean(self.truncated_value_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.data_)):
+    for i in range(len(self.data_)):
       out.putVarInt32(10)
       out.putVarInt32(self.data_[i].ByteSizePartial())
       self.data_[i].OutputPartial(out)
@@ -3361,7 +4122,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3381,7 +4142,7 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdata = 1
   knext_key = 2
@@ -3405,6 +4166,12 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ReadKeyValueResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KJWFwcGhvc3RpbmcuZmlsZXMuUmVhZEtleVZhbHVlUmVzcG9uc2UTGgRkYXRhIAEoAjALOANKLmFwcGhvc3RpbmcuZmlsZXMuUmVhZEtleVZhbHVlUmVzcG9uc2VfS2V5VmFsdWWjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoIbmV4dF9rZXkgAigCMAk4ARQTGg90cnVuY2F0ZWRfdmFsdWUgAygAMAg4ARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleEnums(ProtocolBuffer.ProtocolMessage):
 
 
@@ -3460,6 +4227,33 @@ class ShuffleEnums(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
 
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleEnums', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleEnums')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleEnums')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleEnums', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleEnums', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleEnums', s)
+
+
   def Equals(self, x):
     if x is self: return 1
     return 1
@@ -3490,7 +4284,7 @@ class ShuffleEnums(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3500,7 +4294,7 @@ class ShuffleEnums(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -3515,6 +4309,12 @@ class ShuffleEnums(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleEnums'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZUVudW1zc3oLSW5wdXRGb3JtYXSLAZIBHVJFQ09SRFNfS0VZX1ZBTFVFX1BST1RPX0lOUFVUmAEBjAF0c3oMT3V0cHV0Rm9ybWF0iwGSASRSRUNPUkRTX0tFWV9NVUxUSV9WQUxVRV9QUk9UT19PVVRQVVSYAQGMAXRzegZTdGF0dXOLAZIBB1VOS05PV06YAQGMAYsBkgEHUlVOTklOR5gBAowBiwGSAQdTVUNDRVNTmAEDjAGLAZIBB0ZBSUxVUkWYAQSMAYsBkgENSU5WQUxJRF9JTlBVVJgBBYwBiwGSARVPVVRQVVRfQUxSRUFEWV9FWElTVFOYAQaMAYsBkgEcSU5DT1JSRUNUX1NIVUZGTEVfU0laRV9CWVRFU5gBB4wBdMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleInputSpecification(ProtocolBuffer.ProtocolMessage):
   has_format_ = 0
   format_ = 1
@@ -3555,6 +4355,33 @@ class ShuffleInputSpecification(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_format()): self.set_format(x.format())
     if (x.has_path()): self.set_path(x.path())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleInputSpecification', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleInputSpecification')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleInputSpecification')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleInputSpecification', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleInputSpecification', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleInputSpecification', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3616,7 +4443,7 @@ class ShuffleInputSpecification(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3628,7 +4455,7 @@ class ShuffleInputSpecification(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kformat = 1
   kpath = 2
@@ -3649,6 +4476,12 @@ class ShuffleInputSpecification(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleInputSpecification'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKmFwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZUlucHV0U3BlY2lmaWNhdGlvbhMaBmZvcm1hdCABKAAwBTgBQgExowGqAQdkZWZhdWx0sgEBMaQBFBMaBHBhdGggAigCMAk4AhTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
   has_format_ = 0
   format_ = 1
@@ -3689,7 +4522,34 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_format()): self.set_format(x.format())
-    for i in xrange(x.path_size()): self.add_path(x.path(i))
+    for i in range(x.path_size()): self.add_path(x.path(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleOutputSpecification', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleOutputSpecification')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleOutputSpecification')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleOutputSpecification', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleOutputSpecification', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleOutputSpecification', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3708,14 +4568,14 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_format_): n += 1 + self.lengthVarInt64(self.format_)
     n += 1 * len(self.path_)
-    for i in xrange(len(self.path_)): n += self.lengthString(len(self.path_[i]))
+    for i in range(len(self.path_)): n += self.lengthString(len(self.path_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_format_): n += 1 + self.lengthVarInt64(self.format_)
     n += 1 * len(self.path_)
-    for i in xrange(len(self.path_)): n += self.lengthString(len(self.path_[i]))
+    for i in range(len(self.path_)): n += self.lengthString(len(self.path_[i]))
     return n
 
   def Clear(self):
@@ -3726,7 +4586,7 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
     if (self.has_format_):
       out.putVarInt32(8)
       out.putVarInt32(self.format_)
-    for i in xrange(len(self.path_)):
+    for i in range(len(self.path_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.path_[i])
 
@@ -3734,7 +4594,7 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
     if (self.has_format_):
       out.putVarInt32(8)
       out.putVarInt32(self.format_)
-    for i in xrange(len(self.path_)):
+    for i in range(len(self.path_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.path_[i])
 
@@ -3749,7 +4609,7 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3766,7 +4626,7 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kformat = 1
   kpath = 2
@@ -3787,6 +4647,12 @@ class ShuffleOutputSpecification(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleOutputSpecification'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KK2FwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZU91dHB1dFNwZWNpZmljYXRpb24TGgZmb3JtYXQgASgAMAU4AUIBMaMBqgEHZGVmYXVsdLIBATGkARQTGgRwYXRoIAIoAjAJOAMUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleRequest_Callback(ProtocolBuffer.ProtocolMessage):
   has_url_ = 0
   url_ = ""
@@ -3859,6 +4725,33 @@ class ShuffleRequest_Callback(ProtocolBuffer.ProtocolMessage):
     if (x.has_app_version_id()): self.set_app_version_id(x.app_version_id())
     if (x.has_method()): self.set_method(x.method())
     if (x.has_queue()): self.set_queue(x.queue())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleRequest_Callback', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleRequest_Callback')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleRequest_Callback')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleRequest_Callback', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleRequest_Callback', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleRequest_Callback', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -3948,7 +4841,7 @@ class ShuffleRequest_Callback(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3962,7 +4855,7 @@ class ShuffleRequest_Callback(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kurl = 1
   kapp_version_id = 2
@@ -3989,6 +4882,12 @@ class ShuffleRequest_Callback(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleRequest_Callback'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZVJlcXVlc3RfQ2FsbGJhY2sTGgN1cmwgASgCMAk4AhQTGg5hcHBfdmVyc2lvbl9pZCACKAIwCTgBFBMaBm1ldGhvZCADKAIwCTgBQgRQT1NUowGqAQdkZWZhdWx0sgEGIlBPU1QipAEUExoFcXVldWUgBCgCMAk4AUIHZGVmYXVsdKMBqgEHZGVmYXVsdLIBCSJkZWZhdWx0IqQBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnPKAShhcHBob3N0aW5nLmZpbGVzLlNodWZmbGVSZXF1ZXN0LkNhbGxiYWNr"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
   has_shuffle_name_ = 0
   shuffle_name_ = ""
@@ -4065,10 +4964,37 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_shuffle_name()): self.set_shuffle_name(x.shuffle_name())
-    for i in xrange(x.input_size()): self.add_input().CopyFrom(x.input(i))
+    for i in range(x.input_size()): self.add_input().CopyFrom(x.input(i))
     if (x.has_output()): self.mutable_output().MergeFrom(x.output())
     if (x.has_shuffle_size_bytes()): self.set_shuffle_size_bytes(x.shuffle_size_bytes())
     if (x.has_callback()): self.mutable_callback().MergeFrom(x.callback())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4113,7 +5039,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.shuffle_name_))
     n += 1 * len(self.input_)
-    for i in xrange(len(self.input_)): n += self.lengthString(self.input_[i].ByteSize())
+    for i in range(len(self.input_)): n += self.lengthString(self.input_[i].ByteSize())
     n += self.lengthString(self.output_.ByteSize())
     n += self.lengthVarInt64(self.shuffle_size_bytes_)
     n += self.lengthString(self.callback_.ByteSize())
@@ -4125,7 +5051,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.shuffle_name_))
     n += 1 * len(self.input_)
-    for i in xrange(len(self.input_)): n += self.lengthString(self.input_[i].ByteSizePartial())
+    for i in range(len(self.input_)): n += self.lengthString(self.input_[i].ByteSizePartial())
     if (self.has_output_):
       n += 1
       n += self.lengthString(self.output_.ByteSizePartial())
@@ -4147,7 +5073,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.shuffle_name_)
-    for i in xrange(len(self.input_)):
+    for i in range(len(self.input_)):
       out.putVarInt32(18)
       out.putVarInt32(self.input_[i].ByteSize())
       self.input_[i].OutputUnchecked(out)
@@ -4164,7 +5090,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_shuffle_name_):
       out.putVarInt32(10)
       out.putPrefixedString(self.shuffle_name_)
-    for i in xrange(len(self.input_)):
+    for i in range(len(self.input_)):
       out.putVarInt32(18)
       out.putVarInt32(self.input_[i].ByteSizePartial())
       self.input_[i].OutputPartial(out)
@@ -4209,7 +5135,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4237,7 +5163,7 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kshuffle_name = 1
   kinput = 2
@@ -4267,6 +5193,12 @@ class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZVJlcXVlc3QTGgxzaHVmZmxlX25hbWUgASgCMAk4AhQTGgVpbnB1dCACKAIwCzgDSiphcHBob3N0aW5nLmZpbGVzLlNodWZmbGVJbnB1dFNwZWNpZmljYXRpb26jAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoGb3V0cHV0IAMoAjALOAJKK2FwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZU91dHB1dFNwZWNpZmljYXRpb26jAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoSc2h1ZmZsZV9zaXplX2J5dGVzIAQoADADOAIUExoIY2FsbGJhY2sgBSgCMAs4AkooYXBwaG9zdGluZy5maWxlcy5TaHVmZmxlUmVxdWVzdF9DYWxsYmFja6MBqgEFY3R5cGWyAQZwcm90bzKkARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4276,6 +5208,33 @@ class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ShuffleResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ShuffleResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ShuffleResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ShuffleResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ShuffleResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ShuffleResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4307,7 +5266,7 @@ class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4317,7 +5276,7 @@ class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -4332,6 +5291,12 @@ class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ShuffleResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuZmlsZXMuU2h1ZmZsZVJlc3BvbnNlwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
   has_shuffle_name_ = 0
   shuffle_name_ = ""
@@ -4356,6 +5321,33 @@ class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_shuffle_name()): self.set_shuffle_name(x.shuffle_name())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetShuffleStatusRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetShuffleStatusRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetShuffleStatusRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetShuffleStatusRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetShuffleStatusRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetShuffleStatusRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4403,7 +5395,7 @@ class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4414,7 +5406,7 @@ class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kshuffle_name = 1
 
@@ -4432,6 +5424,12 @@ class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetShuffleStatusRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuZmlsZXMuR2V0U2h1ZmZsZVN0YXR1c1JlcXVlc3QTGgxzaHVmZmxlX25hbWUgASgCMAk4AhTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
   has_status_ = 0
   status_ = 0
@@ -4472,6 +5470,33 @@ class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_status()): self.set_status(x.status())
     if (x.has_description()): self.set_description(x.description())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetShuffleStatusResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetShuffleStatusResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetShuffleStatusResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetShuffleStatusResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetShuffleStatusResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetShuffleStatusResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4533,7 +5558,7 @@ class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4545,7 +5570,7 @@ class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
   kdescription = 2
@@ -4566,6 +5591,12 @@ class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetShuffleStatusResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKWFwcGhvc3RpbmcuZmlsZXMuR2V0U2h1ZmZsZVN0YXR1c1Jlc3BvbnNlExoGc3RhdHVzIAEoADAFOAIUExoLZGVzY3JpcHRpb24gAigCMAk4ARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetCapabilitiesRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4575,6 +5606,33 @@ class GetCapabilitiesRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetCapabilitiesRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetCapabilitiesRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetCapabilitiesRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetCapabilitiesRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetCapabilitiesRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetCapabilitiesRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4606,7 +5664,7 @@ class GetCapabilitiesRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4616,7 +5674,7 @@ class GetCapabilitiesRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -4631,6 +5689,12 @@ class GetCapabilitiesRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetCapabilitiesRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KJ2FwcGhvc3RpbmcuZmlsZXMuR2V0Q2FwYWJpbGl0aWVzUmVxdWVzdMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
   has_shuffle_available_ = 0
   shuffle_available_ = 0
@@ -4670,8 +5734,35 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.filesystem_size()): self.add_filesystem(x.filesystem(i))
+    for i in range(x.filesystem_size()): self.add_filesystem(x.filesystem(i))
     if (x.has_shuffle_available()): self.set_shuffle_available(x.shuffle_available())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetCapabilitiesResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetCapabilitiesResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetCapabilitiesResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetCapabilitiesResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetCapabilitiesResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetCapabilitiesResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4693,13 +5784,13 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.filesystem_)
-    for i in xrange(len(self.filesystem_)): n += self.lengthString(len(self.filesystem_[i]))
+    for i in range(len(self.filesystem_)): n += self.lengthString(len(self.filesystem_[i]))
     return n + 2
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.filesystem_)
-    for i in xrange(len(self.filesystem_)): n += self.lengthString(len(self.filesystem_[i]))
+    for i in range(len(self.filesystem_)): n += self.lengthString(len(self.filesystem_[i]))
     if (self.has_shuffle_available_):
       n += 2
     return n
@@ -4709,14 +5800,14 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_shuffle_available()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.filesystem_)):
+    for i in range(len(self.filesystem_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.filesystem_[i])
     out.putVarInt32(16)
     out.putBoolean(self.shuffle_available_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.filesystem_)):
+    for i in range(len(self.filesystem_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.filesystem_[i])
     if (self.has_shuffle_available_):
@@ -4734,7 +5825,7 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4751,7 +5842,7 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilesystem = 1
   kshuffle_available = 2
@@ -4772,6 +5863,12 @@ class GetCapabilitiesResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetCapabilitiesResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuZmlsZXMuR2V0Q2FwYWJpbGl0aWVzUmVzcG9uc2UTGgpmaWxlc3lzdGVtIAEoAjAJOAMUExoRc2h1ZmZsZV9hdmFpbGFibGUgAigAMAg4AhTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FinalizeRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -4796,6 +5893,33 @@ class FinalizeRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.FinalizeRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.FinalizeRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.FinalizeRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.FinalizeRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.FinalizeRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.FinalizeRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4843,7 +5967,7 @@ class FinalizeRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4854,7 +5978,7 @@ class FinalizeRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
 
@@ -4872,6 +5996,12 @@ class FinalizeRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.FinalizeRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuZmlsZXMuRmluYWxpemVSZXF1ZXN0ExoIZmlsZW5hbWUgASgCMAk4AhTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FinalizeResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4881,6 +6011,33 @@ class FinalizeResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.FinalizeResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.FinalizeResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.FinalizeResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.FinalizeResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.FinalizeResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.FinalizeResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4912,7 +6069,7 @@ class FinalizeResponse(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4922,7 +6079,7 @@ class FinalizeResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -4937,6 +6094,12 @@ class FinalizeResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.FinalizeResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KIWFwcGhvc3RpbmcuZmlsZXMuRmluYWxpemVSZXNwb25zZcIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetDefaultGsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4946,6 +6109,33 @@ class GetDefaultGsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetDefaultGsBucketNameRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetDefaultGsBucketNameRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetDefaultGsBucketNameRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetDefaultGsBucketNameRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetDefaultGsBucketNameRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetDefaultGsBucketNameRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -4977,7 +6167,7 @@ class GetDefaultGsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4987,7 +6177,7 @@ class GetDefaultGsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -5002,6 +6192,12 @@ class GetDefaultGsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetDefaultGsBucketNameRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KLmFwcGhvc3RpbmcuZmlsZXMuR2V0RGVmYXVsdEdzQnVja2V0TmFtZVJlcXVlc3TCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetDefaultGsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
   has_default_gs_bucket_name_ = 0
   default_gs_bucket_name_ = ""
@@ -5026,6 +6222,33 @@ class GetDefaultGsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_default_gs_bucket_name()): self.set_default_gs_bucket_name(x.default_gs_bucket_name())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.GetDefaultGsBucketNameResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.GetDefaultGsBucketNameResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.GetDefaultGsBucketNameResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.GetDefaultGsBucketNameResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.GetDefaultGsBucketNameResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.GetDefaultGsBucketNameResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -5068,7 +6291,7 @@ class GetDefaultGsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5079,7 +6302,7 @@ class GetDefaultGsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdefault_gs_bucket_name = 1
 
@@ -5097,6 +6320,12 @@ class GetDefaultGsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.GetDefaultGsBucketNameResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KL2FwcGhvc3RpbmcuZmlsZXMuR2V0RGVmYXVsdEdzQnVja2V0TmFtZVJlc3BvbnNlExoWZGVmYXVsdF9nc19idWNrZXRfbmFtZSABKAIwCTgBFMIBImFwcGhvc3RpbmcuZmlsZXMuRmlsZVNlcnZpY2VFcnJvcnM="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ListDirRequest(ProtocolBuffer.ProtocolMessage):
   has_path_ = 0
   path_ = ""
@@ -5169,6 +6398,33 @@ class ListDirRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_marker()): self.set_marker(x.marker())
     if (x.has_max_keys()): self.set_max_keys(x.max_keys())
     if (x.has_prefix()): self.set_prefix(x.prefix())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ListDirRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ListDirRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ListDirRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ListDirRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ListDirRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ListDirRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -5258,7 +6514,7 @@ class ListDirRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5272,7 +6528,7 @@ class ListDirRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpath = 1
   kmarker = 2
@@ -5299,6 +6555,12 @@ class ListDirRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ListDirRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuZmlsZXMuTGlzdERpclJlcXVlc3QTGgRwYXRoIAEoAjAJOAIUExoGbWFya2VyIAIoAjAJOAEUExoIbWF4X2tleXMgAygAMAM4ARQTGgZwcmVmaXggBCgCMAk4ARTCASJhcHBob3N0aW5nLmZpbGVzLkZpbGVTZXJ2aWNlRXJyb3Jz"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class ListDirResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -5323,7 +6585,34 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.filenames_size()): self.add_filenames(x.filenames(i))
+    for i in range(x.filenames_size()): self.add_filenames(x.filenames(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.files.ListDirResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.files.ListDirResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.files.ListDirResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.files.ListDirResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.files.ListDirResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.files.ListDirResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -5339,25 +6628,25 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.filenames_)
-    for i in xrange(len(self.filenames_)): n += self.lengthString(len(self.filenames_[i]))
+    for i in range(len(self.filenames_)): n += self.lengthString(len(self.filenames_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.filenames_)
-    for i in xrange(len(self.filenames_)): n += self.lengthString(len(self.filenames_[i]))
+    for i in range(len(self.filenames_)): n += self.lengthString(len(self.filenames_[i]))
     return n
 
   def Clear(self):
     self.clear_filenames()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.filenames_)):
+    for i in range(len(self.filenames_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.filenames_[i])
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.filenames_)):
+    for i in range(len(self.filenames_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.filenames_[i])
 
@@ -5369,7 +6658,7 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5385,7 +6674,7 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilenames = 1
 
@@ -5403,6 +6692,12 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.files.ListDirResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2FwaS9maWxlcy9maWxlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuZmlsZXMuTGlzdERpclJlc3BvbnNlExoJZmlsZW5hbWVzIAEoAjAJOAMUwgEiYXBwaG9zdGluZy5maWxlcy5GaWxlU2VydmljZUVycm9ycw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 if _extension_runtime:
   pass
 

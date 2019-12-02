@@ -17,6 +17,7 @@
 """Finds the directory and target script name for App Engine SDK scripts."""
 
 import os
+import subprocess
 import sys
 
 
@@ -107,20 +108,36 @@ class Paths(object):
       dir_path: the directory path where the calling script is to be found.
         This directory should have a lib subdirectory.
     """
+    self.dir_path = dir_path
+
+
+
+
+
+
+
+    grpc_importable = False
+    grpc_path = os.path.join(dir_path, 'lib', 'grpcio-1.20.0')
+    if os.path.exists(grpc_path):
+
+
+      grpc_importable = not subprocess.call(
+          [sys.executable, '-c', 'import grpc'],
+          cwd=grpc_path, stderr=subprocess.PIPE)
 
 
     self.v1_extra_paths = [
         dir_path,
         os.path.join(dir_path, 'lib', 'antlr3'),
-        os.path.join(dir_path, 'lib', 'django-0.96'),
         os.path.join(dir_path, 'lib', 'fancy_urllib'),
         os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'protorpc-1.0'),
         os.path.join(dir_path, 'lib', 'webob_0_9'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.2'),
-        os.path.join(dir_path, 'lib', 'yaml', 'lib'),
+        os.path.join(dir_path, 'lib', 'yaml-3.10'),
         os.path.join(dir_path, 'lib', 'simplejson'),
+        os.path.join(dir_path, 'lib', 'six_subset'),
 
         os.path.join(dir_path, 'lib', 'rsa'),
         os.path.join(dir_path, 'lib', 'pyasn1'),
@@ -131,12 +148,18 @@ class Paths(object):
       self.v1_extra_paths.extend([
           os.path.join(dir_path, 'lib', 'httplib2'),
           os.path.join(dir_path, 'lib', 'oauth2client'),
-          os.path.join(dir_path, 'lib', 'six'),
+          os.path.join(dir_path, 'lib', 'six-1.9.0'),
       ])
 
     self.api_server_extra_paths = [
-        os.path.join(dir_path, 'lib', 'argparse'),
+
+        os.path.join(dir_path, 'lib', 'cherrypy'),
+        os.path.join(dir_path, 'lib', 'concurrent'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
+        os.path.join(dir_path, 'lib', 'portpicker'),
     ]
+    if grpc_importable:
+      self.api_server_extra_paths.append(grpc_path)
 
 
 
@@ -145,6 +168,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'cherrypy'),
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'endpoints-1.0'),
+        os.path.join(dir_path, 'lib', 'portpicker'),
     ]
 
 
@@ -157,7 +181,7 @@ class Paths(object):
       self.oauth_client_extra_paths.extend([
           os.path.join(dir_path, 'lib', 'apiclient'),
           os.path.join(dir_path, 'lib', 'oauth2client'),
-          os.path.join(dir_path, 'lib', 'six'),
+          os.path.join(dir_path, 'lib', 'six-1.9.0'),
           os.path.join(dir_path, 'lib', 'uritemplate'),
       ])
     else:
@@ -176,21 +200,23 @@ class Paths(object):
 
     devappserver2_dir = os.path.join(
         dir_path, 'google', 'appengine', 'tools', 'devappserver2')
-    php_runtime_dir = os.path.join(devappserver2_dir, 'php')
-    python_runtime_dir = os.path.join(devappserver2_dir, 'python')
+
+    php_runtime_dir = os.path.join(devappserver2_dir, 'php', 'runtime')
+    python_runtime_dir = os.path.join(devappserver2_dir, 'python', 'runtime')
 
     stub_paths = [
         os.path.join(dir_path, 'lib', 'antlr3'),
         os.path.join(dir_path, 'lib', 'fancy_urllib'),
         os.path.join(dir_path, 'lib', 'ipaddr'),
+        os.path.join(dir_path, 'lib', 'six_subset'),
         os.path.join(dir_path, 'lib', 'yaml-3.10'),
 
         os.path.join(dir_path, 'lib', 'rsa'),
         os.path.join(dir_path, 'lib', 'pyasn1'),
         os.path.join(dir_path, 'lib', 'pyasn1_modules'),
         os.path.join(dir_path, 'lib', 'httplib2'),
-        os.path.join(dir_path, 'lib', 'oauth2client'),
-        os.path.join(dir_path, 'lib', 'six'),
+        os.path.join(dir_path, 'lib', 'oauth2client_devserver'),
+        os.path.join(dir_path, 'lib', 'six-1.9.0'),
     ]
 
 
@@ -218,16 +244,21 @@ class Paths(object):
         dir_path,
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'portpicker'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.1'),
     ]
+    if grpc_importable:
+      devappserver2_paths.append(grpc_path)
 
     php_runtime_paths = [
         dir_path,
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
+        os.path.join(dir_path, 'lib', 'six_subset'),
         os.path.join(dir_path, 'lib', 'yaml-3.10'),
     ]
 
@@ -236,7 +267,9 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
         os.path.join(dir_path, 'lib', 'fancy_urllib'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'protorpc-1.0'),
+        os.path.join(dir_path, 'lib', 'six_subset'),
         os.path.join(dir_path, 'lib', 'yaml-3.10'),
     ]
 
@@ -258,6 +291,7 @@ class Paths(object):
     }
 
     self._wrapper_name_to_real_name = {
+        'api_server.py': 'api_server.py',
         'dev_appserver.py': 'devappserver2.py',
         '_php_runtime.py': 'runtime.py',
         '_python_runtime.py': 'runtime.py',
@@ -270,6 +304,7 @@ class Paths(object):
         dir_path, 'google', 'storage', 'speckle', 'python', 'tool')
 
     self._script_to_dir = {
+        'api_server.py': devappserver2_dir,
         'dev_appserver.py': devappserver2_dir,
         '_php_runtime.py': php_runtime_dir,
         '_python_runtime.py': python_runtime_dir,

@@ -27,7 +27,8 @@ import google
 import jinja2
 import webapp2
 
-from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2 import metrics
+from google.appengine.tools.devappserver2 import util
 
 
 def _urlencode_filter(value):
@@ -51,29 +52,19 @@ def _byte_size_format(value):
     return '%.1f GiB (%d Bytes)' % (byte_count/1024.0 ** 3, byte_count)
 
 
-TEMPLATE_PATH = os.path.abspath(
+_TEMPLATE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), 'templates'))
 admin_template_environment = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(TEMPLATE_PATH),
+    loader=jinja2.FileSystemLoader(_TEMPLATE_PATH),
     autoescape=True)
 admin_template_environment.filters['urlencode'] = _urlencode_filter
 admin_template_environment.filters['bytesizeformat'] = _byte_size_format
-
-_DEFAULT_SDK_VERSION = '(Internal)'
-
-
-def _get_sdk_version():
-  version_object = sdk_update_checker.GetVersionObject()
-  if version_object:
-    return version_object['release']
-  else:
-    return _DEFAULT_SDK_VERSION
 
 
 class AdminRequestHandler(webapp2.RequestHandler):
   """Base class for all admin UI request handlers."""
 
-  _SDK_VERSION = _get_sdk_version()
+  _SDK_VERSION = util.get_sdk_version()
 
   @classmethod
   def init_xsrf(cls, xsrf_path):
@@ -107,15 +98,20 @@ class AdminRequestHandler(webapp2.RequestHandler):
       A Unicode object containing the rendered template.
     """
     template = admin_template_environment.get_template(template)
+    values = self._get_default_template_values()
+    values.update(context)
 
-    values = {
+    return template.render(values)
+
+  def _get_default_template_values(self):
+    """Returns default values supplied to all rendered templates."""
+    return {
         'app_id': self.configuration.app_id,
         'request': self.request,
         'sdk_version': self._SDK_VERSION,
         'xsrf_token': self.xsrf_token,
-      }
-    values.update(context)
-    return template.render(values)
+        'enable_console': self.enable_console
+    }
 
   def _construct_url(self, remove=None, add=None):
     """Returns a URL referencing the current resource with the same params.
@@ -150,3 +146,20 @@ class AdminRequestHandler(webapp2.RequestHandler):
   @property
   def configuration(self):
     return self.request.app.configuration
+
+  @property
+  def enable_console(self):
+    return self.request.app.enable_console
+
+  @metrics.LogHandlerRequest(metrics.ADMIN_CONSOLE_CATEGORY)
+  def get(self, *args, **kwargs):
+    """Base method for all get requests."""
+    self.response.headers.add('X-Frame-Options', 'SAMEORIGIN')
+    self.response.headers.add('X-XSS-Protection', '1; mode=block')
+    self.response.headers.add('Content-Security-Policy', "default-src 'self'")
+    self.response.headers.add(
+        'Content-Security-Policy', "frame-ancestors 'none'")
+
+  @metrics.LogHandlerRequest(metrics.ADMIN_CONSOLE_CATEGORY)
+  def post(self, *args, **kwargs):
+    """Base method for all post requests."""

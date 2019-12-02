@@ -43,7 +43,7 @@ from google.appengine.datastore import entity_pb
 from google.appengine.datastore import datastore_v4_pb
 from google.appengine.datastore import entity_v4_pb
 
-_MIN_CLOUD_DATASTORE_VERSION = (4, 0, 0, 'b1')
+_MIN_CLOUD_DATASTORE_VERSION = (6, 0, 0)
 _CLOUD_DATASTORE_ENABLED = False
 
 try:
@@ -1381,7 +1381,7 @@ class _EntityConverter(object):
     """
     check_conversion(v1_value.HasField('string_value'),
                      'Value does not contain a string value.')
-    return v1_value.string_value
+    return v1_value.string_value.encode('utf-8')
 
   def __v1_integer_property(self, entity, name, value, indexed):
     """Populates a single-integer-valued v1 Property.

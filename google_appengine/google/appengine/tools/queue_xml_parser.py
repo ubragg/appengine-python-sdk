@@ -14,7 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Performs translation of queue.xml to queue.yaml."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import sys
 
 from xml.etree import ElementTree
 
@@ -261,3 +269,11 @@ class RetryParameters(object):
       if field_value:
         statements.append('    %s: %s' % (field, field_value))
     return statements
+
+
+def main():
+  xml = sys.stdin.read()
+  print(GetQueueYaml(None, xml))
+
+if __name__ == '__main__':
+  sys.exit(main())

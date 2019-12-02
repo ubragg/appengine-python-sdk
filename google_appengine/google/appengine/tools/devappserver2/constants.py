@@ -18,6 +18,8 @@
 
 
 
+import logging
+
 # These statuses must not include a response body (RFC 2616).
 NO_BODY_RESPONSE_STATUSES = frozenset([100, 101, 204, 304])
 
@@ -80,3 +82,54 @@ FAKE_IS_ADMIN_HEADER = 'HTTP_X_APPENGINE_FAKE_IS_ADMIN'
 # A header that indicates to the authorization system that the request should
 # be considered to have been made by a logged-in user.
 FAKE_LOGGED_IN_HEADER = 'HTTP_X_APPENGINE_FAKE_LOGGED_IN'
+
+# Valid choices for --log_level and their corresponding constants in
+# runtime_config_pb2.Config.stderr_log_level.
+LOG_LEVEL_TO_RUNTIME_CONSTANT = {
+    'debug': 0,
+    'info': 1,
+    'warning': 2,
+    'error': 3,
+    'critical': 4,
+}
+
+# Valid choices for --dev_appserver_log_level and their corresponding Python
+# logging levels
+LOG_LEVEL_TO_PYTHON_CONSTANT = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL,
+}
+
+# The default encoding used by the production interpreter.
+PROD_DEFAULT_ENCODING = 'ascii'
+
+# The environment variable exposed in the devshell.
+DEVSHELL_ENV = 'DEVSHELL_CLIENT_PORT'
+
+# GAE instance class defaults.
+DEFAULT_AUTO_SCALING_INSTANCE_CLASS = 'F1'
+DEFAULT_BASIC_SCALING_INSTANCE_CLASS = 'B2'
+DEFAULT_MANUAL_SCALING_INSTANCE_CLASS = 'B2'
+
+# GAE instance class available memory (MB).
+# https://cloud.google.com/appengine/docs/standard/#instance_classes
+INSTANCE_CLASS_MEMORY_LIMIT = {
+    'B1': 128,
+    'B2': 256,
+    'B4': 512,
+    'B4_1G': 1024,
+    'B8': 1024,
+    'F1': 128,
+    'F2': 256,
+    'F4': 512,
+    'F4_1G': 1024
+}
+
+# Prefixes of log messages when starting subprocesses. Complete log messages
+# will all be in the format of "My log msg prefix: <host>:<port>"
+API_SERVER_STARTING_MSG = 'Starting API server at'
+GRPC_API_SERVER_STARTING_MSG = 'Starting gRPC API server at'
+DATASTORE_EMULATOR_STARTING_MSG = 'Starting Cloud Datastore emulator at'

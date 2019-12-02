@@ -34,7 +34,6 @@ from google.appengine.tools import cron_xml_parser
 from google.appengine.tools import dispatch_xml_parser
 from google.appengine.tools import dos_xml_parser
 from google.appengine.tools import jarfile
-from google.appengine.tools import java_quickstart
 from google.appengine.tools import java_utils
 from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import web_xml_parser
@@ -43,9 +42,7 @@ from google.appengine.tools import yaml_translator
 
 
 _CLASSES_JAR_NAME_PREFIX = '_ah_webinf_classes'
-_COMPILED_JSP_JAR_NAME_PREFIX = '_ah_compiled_jsps'
-_LOCAL_JSPC_CLASS = 'com.google.appengine.tools.development.LocalJspC'
-_MAX_COMPILED_JSP_JAR_SIZE = 1024 * 1024 * 5
+_MAX_JAR_SIZE = 1024 * 1024 * 5
 
 
 class Error(Exception):
@@ -57,14 +54,11 @@ class ConfigurationError(Error):
   pass
 
 
-class CompileError(Error):
-  """There was a compilation error in a JSP file or its generated Java code."""
-  pass
-
-
 def IsWarFileWithoutYaml(dir_path):
-  if os.path.isfile(os.path.join(dir_path, 'app.yaml')):
-    return False
+  alt_dir_path = os.path.join(dir_path, 'WEB-INF', 'appengine-generated')
+  for yaml_dir_path in (dir_path, alt_dir_path):
+    if os.path.isfile(os.path.join(yaml_dir_path, 'app.yaml')):
+      return False
   web_inf = os.path.join(dir_path, 'WEB-INF')
   return (os.path.isdir(web_inf) and
           set(['appengine-web.xml', 'web.xml']).issubset(os.listdir(web_inf)))
@@ -88,12 +82,6 @@ def AddUpdateOptions(parser):
                     dest='compile_encoding', default='UTF-8',
                     help='Set the encoding to be used when compiling Java '
                     'source files (default "UTF-8").')
-  parser.add_option('--disable_jar_jsps', action='store_false',
-                    dest='jar_jsps', default=True,
-                    help='Do not jar the classes generated from JSPs.')
-  parser.add_option('--delete_jsps', action='store_true',
-                    dest='delete_jsps', default=False,
-                    help='Delete the JSP source files after compilation.')
   parser.add_option('--enable_jar_classes', action='store_true',
                     dest='do_jar_classes', default=False,
                     help='Jar the WEB-INF/classes content.')
@@ -146,6 +134,10 @@ class JavaAppUpdate(object):
     self._ValidateXmlFiles()
 
     self.app_engine_web_xml = self._ReadAppEngineWebXml()
+    if self.app_engine_web_xml.env in ['flex', 'flexible']:
+      raise ConfigurationError(
+          'Flex environment is not supported with this tool.'
+          ' Please use the Cloud SDK to perform a deployment.')
     self.app_engine_web_xml.app_root = self.basepath
     if self.options.app_id:
       self.app_engine_web_xml.app_id = self.options.app_id
@@ -154,11 +146,7 @@ class JavaAppUpdate(object):
     quickstart = xml_parser_utils.BooleanValue(
         self.app_engine_web_xml.beta_settings.get('java_quickstart', 'false'))
     if quickstart:
-      web_xml_str, _ = java_quickstart.quickstart_generator(self.basepath)
-      webdefault_xml_str = java_quickstart.get_webdefault_xml()
-      web_xml_str = java_quickstart.remove_mappings(
-          web_xml_str, webdefault_xml_str)
-      self.web_xml = web_xml_parser.WebXmlParser().ProcessXml(web_xml_str)
+      raise ConfigurationError('Quickstart generation is not supported.')
     else:
       self.web_xml = self._ReadWebXml()
 
@@ -218,17 +206,13 @@ class JavaAppUpdate(object):
     with open(os.path.join(basepath, 'WEB-INF', file_name)) as file_handle:
       return parser().ProcessXml(file_handle.read())
 
-  def CreateStagingDirectory(self, tools_dir):
+  def CreateStagingDirectory(self):
     """Creates a staging directory for uploading.
 
     This is where we perform the necessary actions to create an application
     directory for the update command to work properly - files are organized
     into the static folder, and yaml files are generated where they can be
     found later.
-
-    Args:
-      tools_dir: Path to the SDK tools directory
-        (typically .../google/appengine/tools)
 
     Returns:
       The path to a new temporary directory which contains generated yaml files
@@ -247,7 +231,7 @@ class JavaAppUpdate(object):
     self.app_engine_web_xml.app_root = stage_dir
 
     if self.options.compile_jsps:
-      self._CompileJspsIfAny(tools_dir, stage_dir)
+      self._CompileJspsIfAny(stage_dir)
 
     web_inf = os.path.join(stage_dir, 'WEB-INF')
     web_inf_lib = os.path.join(web_inf, 'lib')
@@ -433,95 +417,11 @@ class JavaAppUpdate(object):
   def _GetStaticFileList(staging_dir):
     return _FilesMatching(os.path.join(staging_dir, '__static__'))
 
-  def _CompileJspsIfAny(self, tools_dir, staging_dir):
+  def _CompileJspsIfAny(self, staging_dir):
     """Compiles JSP files, if any, into .class files.."""
     if self._MatchingFileExists(self._JSP_REGEX, staging_dir):
-      gen_dir = tempfile.mkdtemp()
-      try:
-        self._CompileJspsWithGenDir(tools_dir, staging_dir, gen_dir)
-      finally:
-        shutil.rmtree(gen_dir)
-
-  def _CompileJspsWithGenDir(self, tools_dir, staging_dir, gen_dir):
-    staging_web_inf = os.path.join(staging_dir, 'WEB-INF')
-    lib_dir = os.path.join(staging_web_inf, 'lib')
-
-    for jar_file in GetUserJspLibFiles(tools_dir):
-      self._CopyOrLinkFile(
-          jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
-    for jar_file in GetSharedJspLibFiles(tools_dir):
-      self._CopyOrLinkFile(
-          jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
-
-    classes_dir = os.path.join(staging_web_inf, 'classes')
-    generated_web_xml = os.path.join(staging_web_inf, 'generated_web.xml')
-
-    classpath = self._GetJspClasspath(tools_dir, classes_dir, gen_dir)
-
-    command_and_args = [
-        self.java_command,
-        '-classpath', classpath,
-        _LOCAL_JSPC_CLASS,
-        '-uriroot', staging_dir,
-        '-p', 'org.apache.jsp',
-        '-l',
-        '-v',
-        '-webinc', generated_web_xml,
-        '-d', gen_dir,
-        '-javaEncoding', self.options.compile_encoding,
-    ]
-
-    status = subprocess.call(command_and_args)
-    if status:
-      raise CompileError(
-          'Compilation of JSPs exited with status %d' % status)
-
-    self._CompileJavaFiles(classpath, staging_web_inf, gen_dir)
-
-
-    self.web_xml = self._ReadWebXml(staging_dir)
-
-  def _CompileJavaFiles(self, classpath, web_inf, jsp_class_dir):
-    """Compile all *.java files found under jsp_class_dir."""
-    java_files = _FilesMatching(jsp_class_dir, lambda f: f.endswith('.java'))
-    if not java_files:
-      return
-
-    command_and_args = [
-        self.javac_command,
-        '-classpath', classpath,
-        '-d', jsp_class_dir,
-        '-source', '7',
-        '-target', '7',
-        '-encoding', self.options.compile_encoding,
-    ] + java_files
-
-    status = subprocess.call(command_and_args)
-    if status:
-      raise CompileError(
-          'Compilation of JSP-generated code exited with status %d' % status)
-
-    if self.options.jar_jsps:
-      self._ZipJasperGeneratedFiles(web_inf, jsp_class_dir)
-    else:
-      web_inf_classes = os.path.join(web_inf, 'classes')
-      self._MoveDirectoryContents(jsp_class_dir, web_inf_classes)
-
-    if self.options.delete_jsps:
-      jsps = _FilesMatching(os.path.dirname(web_inf),
-                            lambda f: f.endswith('.jsp'))
-      for f in jsps:
-        os.remove(f)
-
-    if self.options.do_jar_classes:
-      self._ZipWebInfClassesFiles(web_inf)
-
-  @staticmethod
-  def _ZipJasperGeneratedFiles(web_inf, jsp_class_dir):
-    lib_dir = os.path.join(web_inf, 'lib')
-    jarfile.Make(jsp_class_dir, lib_dir, _COMPILED_JSP_JAR_NAME_PREFIX,
-                 maximum_size=_MAX_COMPILED_JSP_JAR_SIZE,
-                 include_predicate=lambda name: not name.endswith('.java'))
+      raise ConfigurationError(
+          'JSP compilation is not supported with this tool.')
 
   @staticmethod
   def _ZipWebInfClassesFiles(web_inf):
@@ -530,22 +430,10 @@ class JavaAppUpdate(object):
     lib_dir = os.path.join(web_inf, 'lib')
     classes_dir = os.path.join(web_inf, 'classes')
     jarfile.Make(classes_dir, lib_dir, _CLASSES_JAR_NAME_PREFIX,
-                 maximum_size=_MAX_COMPILED_JSP_JAR_SIZE)
+                 maximum_size=_MAX_JAR_SIZE)
     shutil.rmtree(classes_dir)
 
     os.mkdir(classes_dir)
-
-  @staticmethod
-  def _GetJspClasspath(tools_dir, classes_dir, gen_dir):
-    """Builds the classpath for the JSP Compilation system call."""
-    lib_dir = os.path.join(os.path.dirname(classes_dir), 'lib')
-    elements = (
-        GetImplLibs(tools_dir) + GetSharedLibFiles(tools_dir) +
-        [classes_dir, gen_dir] +
-        _FilesMatching(
-            lib_dir, lambda f: f.endswith('.jar') or f.endswith('.zip')))
-
-    return (os.pathsep).join(elements)
 
   @staticmethod
   def _MatchingFileExists(regex, dir_path):
@@ -554,36 +442,6 @@ class JavaAppUpdate(object):
         if re.search(regex, f):
           return True
     return False
-
-
-def GetImplLibs(tools_dir):
-  return _GetLibsShallow(os.path.join(tools_dir, 'java', 'lib', 'impl'))
-
-
-def GetSharedLibFiles(tools_dir):
-  return _GetLibsRecursive(os.path.join(tools_dir, 'java', 'lib', 'shared'))
-
-
-def GetUserJspLibFiles(tools_dir):
-  return _GetLibsRecursive(
-      os.path.join(tools_dir, 'java', 'lib', 'tools', 'jsp'))
-
-
-def GetSharedJspLibFiles(tools_dir):
-  return _GetLibsRecursive(
-      os.path.join(tools_dir, 'java', 'lib', 'shared', 'jsp'))
-
-
-def _GetLibsRecursive(dir_path):
-  return _FilesMatching(dir_path, lambda f: f.endswith('.jar'))
-
-
-def _GetLibsShallow(dir_path):
-  libs = []
-  for f in os.listdir(dir_path):
-    if os.path.isfile(os.path.join(dir_path, f)) and f.endswith('.jar'):
-      libs.append(os.path.join(dir_path, f))
-  return libs
 
 
 def _FilesMatching(root, predicate=lambda f: True):

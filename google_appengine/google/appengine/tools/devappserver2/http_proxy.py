@@ -78,21 +78,22 @@ class HttpProxy:
                     ('Content-Length', str(len(message)))])
     return message
 
-  def wait_for_connection(self, retries=100000):
+  def wait_for_connection(self, process, retries=100000):
     """Waits while instance is booting.
 
     Args:
+      process: subprocess.Popen, the process we are trying to connect to.
       retries: int, Number of connection retries.
 
     Raises:
       http_utils.HostNotReachable: if host:port can't be reached after given
-          number of retries.
+          number of retries or the process dies.
     """
     # If there was a prior error, we don't need to wait for a connection.
     if self._prior_error:
       return
 
-    http_utils.wait_for_connection(self._host, self._port, retries)
+    http_utils.wait_for_connection(self._host, self._port, process, retries)
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):
@@ -102,8 +103,10 @@ class HttpProxy:
       environ: An environ dict for the request as defined in PEP-333.
       start_response: A function with semantics defined in PEP-333.
       url_map: An appinfo.URLMap instance containing the configuration for the
-          handler matching this request.
-      match: A re.MatchObject containing the result of the matched URL pattern.
+          handler matching this request, or None if the http proxy is for an
+          instance with its own handlers.
+      match: A re.MatchObject containing the result of the matched URL pattern,
+          or None if the http proxy is for an instance with its own handlers.
       request_id: A unique string id associated with the request.
       request_type: The type of the request. See instance.*_REQUEST module
           constants.
@@ -116,8 +119,12 @@ class HttpProxy:
       logging.error(self._prior_error)
       yield self._respond_with_error(self._prior_error, start_response)
       return
-
-    environ[http_runtime_constants.SCRIPT_HEADER] = match.expand(url_map.script)
+    if url_map.script:
+      # For traditional runtimes, url_map must have a corresponding script,
+      # while for modern runtimes script is neglected in favor of user specified
+      # entrypoint.
+      environ[http_runtime_constants.SCRIPT_HEADER] = match.expand(
+          url_map.script)
     if request_type == instance.BACKGROUND_REQUEST:
       environ[http_runtime_constants.REQUEST_TYPE_HEADER] = 'background'
     elif request_type == instance.SHUTDOWN_REQUEST:
@@ -164,6 +171,9 @@ class HttpProxy:
     headers[http_runtime_constants.APPENGINE_HEADER_PREFIX +
             'User-Organization'] = organization
     headers['X-AppEngine-Country'] = 'ZZ'
+    if environ.get('wsgi.url_scheme') == 'https':
+      headers[http_runtime_constants.APPENGINE_DEV_HEADER_PREFIX +
+              'LocalSSL'] = '1'
     connection = httplib.HTTPConnection(self._host, self._port)
     with contextlib.closing(connection):
       try:

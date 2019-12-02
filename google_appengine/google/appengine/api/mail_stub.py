@@ -30,21 +30,32 @@ send real email via SMTP or sendmail."""
 
 
 
+import collections
 from email import encoders
-from email import MIMEBase
-from email import MIMEMultipart
-from email import MIMEText
+import functools
 import logging
-import mail
-import mimetypes
 import re
-import subprocess
 import smtplib
+import subprocess
 
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import mail
+from google.appengine.api import mail_service_pb
+from google.appengine.runtime import apiproxy_errors
 
 
 MAX_REQUEST_SIZE = 32 << 20
+
+JAVA_TO_PYTHON_LOG_LEVELS = {
+    'SEVERE': logging.CRITICAL,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'CONFIG': logging.DEBUG,
+    'FINE': logging.DEBUG,
+    'FINER': logging.DEBUG,
+    'FINEST': logging.DEBUG,
+    'ALL': logging.NOTSET,
+}
 
 
 class MailServiceStub(apiproxy_stub.APIProxyStub):
@@ -92,6 +103,14 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._allow_tls = allow_tls
 
     self._cached_messages = []
+    self._log_fn = logging.info
+
+
+
+
+
+
+    self._saved_log_level = 'INFO'
 
   def _GenerateLog(self, method, message, log):
     """Generate a list of log messages representing sent mail.
@@ -127,6 +146,14 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
         log_message.append('-----\n' + message.textbody() + '\n-----')
 
 
+    if message.has_amphtmlbody():
+      log_message.append('  Body:')
+      log_message.append('    Content-type: text/x-amp-html')
+      log_message.append('    Data length: %d' % len(message.amphtmlbody()))
+      if self._show_mail_body:
+        log_message.append('-----\n' + message.amphtmlbody() + '\n-----')
+
+
     if message.has_htmlbody():
       log_message.append('  Body:')
       log_message.append('    Content-type: text/html')
@@ -147,14 +174,42 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     """Cache a message that were sent for later inspection.
 
     Args:
-      message: Message to cache.
+      message: A mail.MailMessage or mail.AdminMailMessage to cache.
     """
     self._cached_messages.append(message)
 
+  def _email_message_from_mime_message(self, mime_message, mail_message_proto):
+    """Construct a mail.EmailMessage from the given mime message and protobuf.
+
+    Unlike the main constructor for EmailMessage, this method ensures that
+    optional headers from the request protobuf are properly set on the
+    EmailMessage.
+
+    Args:
+      mime_message: An email.MIMEMultipart instance.
+      mail_message_proto: The mail_service_pb.MailMessage instance used to
+        create the mime_message.
+
+    Returns:
+      An instance of mail.EmailMessage.
+    """
+    headers = collections.OrderedDict()
+    for header in mail_message_proto.header_list():
+      headers[header.name()] = header.value()
+    if headers:
+      return mail.EmailMessage(mime_message=mime_message, headers=headers)
+    else:
+      return mail.EmailMessage(mime_message=mime_message)
+
 
   @apiproxy_stub.Synchronized
-  def get_sent_messages(self, to=None, sender=None, subject=None, body=None,
-                        html=None):
+  def get_sent_messages(self,
+                        to=None,
+                        sender=None,
+                        subject=None,
+                        body=None,
+                        html=None,
+                        amp_html=None):
     """Get a list of mail messages sent via the Mail API.
 
     Args:
@@ -163,31 +218,51 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       subject: A regular expression that the message subject must match.
       body: A regular expression that the text body must match.
       html: A regular expression that the HTML body must match.
+      amp_html: A regular expression that the AMP HTML body must match.
 
     Returns:
-      A list of matching mail.EmailMessage objects.
+      A list of matching mail.EmailMessage or mail.AdminEmailMessage objects.
     """
-    messages = self._cached_messages
+    messages = self._cached_messages[:]
 
     def recipient_matches(recipient):
       return re.search(to, recipient)
 
+    def regex_filter(regex_pattern, message_field):
+      filtered_messages = []
+      for m in messages:
+        message_field_contents = getattr(m, message_field, '')
+        if isinstance(message_field_contents, mail.EncodedPayload):
+          message_field_contents = message_field_contents.decode()
+        if re.search(regex_pattern, message_field_contents):
+          filtered_messages.append(m)
+      return filtered_messages
+
     if to:
-      messages = [m for m in messages if filter(recipient_matches, m.to_list())]
+      filtered_messages = []
+      for m in messages:
+        to_field = getattr(m, 'to', '')
+        if isinstance(to_field, basestring):
+          to_field = [to_field]
+        if filter(recipient_matches, to_field):
+          filtered_messages.append(m)
+      messages = filtered_messages
     if sender:
-      messages = [m for m in messages if re.search(sender, m.sender())]
+      messages = regex_filter(sender, 'sender')
     if subject:
-      messages = [m for m in messages if re.search(subject, m.subject())]
+      messages = regex_filter(subject, 'subject')
     if body:
-      messages = [m for m in messages if re.search(body, m.textbody())]
+      messages = regex_filter(body, 'body')
     if html:
-      messages = [m for m in messages if re.search(html, m.htmlbody())]
-    mail_messages = []
-    for message in messages:
-      mime_message = mail.mail_message_to_mime_message(message)
-      email_message = mail.EmailMessage(mime_message=mime_message)
-      mail_messages.append(email_message)
-    return mail_messages
+      messages = regex_filter(html, 'html')
+    if amp_html:
+      messages = regex_filter(amp_html, 'amp_html')
+
+    return messages
+
+  @apiproxy_stub.Synchronized
+  def Clear(self):
+    self._cached_messages = []
 
   def _SendSMTP(self, mime_message, smtp_lib=smtplib.SMTP):
     """Send MIME message via SMTP.
@@ -263,7 +338,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     except (IOError, OSError), e:
       logging.error('Error sending mail using sendmail: ' + str(e))
 
-  def _Send(self, request, response, log=logging.info,
+  def _Send(self, request, response, log=None,
             smtp_lib=smtplib.SMTP,
             popen=subprocess.Popen,
             sendmail_command='sendmail'):
@@ -274,27 +349,25 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     will use Sendmail if it is installed.
 
     Args:
-      request: The message to send, a SendMailRequest.
-      response: The send response, a SendMailResponse.
+      request: The message to send, a mail_service_pb.MailMessage.
+      response: An unused api_base_pb.VoidProto.
       log: Log function to send log information.  Used for dependency
         injection.
       smtp_lib: Class of SMTP library.  Used for dependency injection.
       popen2: popen2 function to use for opening pipe to other process.
         Used for dependency injection.
     """
-    self._CacheMessage(request)
+    log = log or self._log_fn
+
+    self._ValidateExtensions(request)
+    mime_message = mail.mail_message_to_mime_message(request)
+    self._CacheMessage(
+        self._email_message_from_mime_message(mime_message, request))
     self._GenerateLog('Send', request, log)
 
     if self._smtp_host and self._enable_sendmail:
       log('Both SMTP and sendmail are enabled.  Ignoring sendmail.')
 
-
-
-
-
-    import email
-
-    mime_message = mail.MailMessageToMIMEMessage(request)
     _Base64EncodeAttachments(mime_message)
     if self._smtp_host:
 
@@ -309,7 +382,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
 
   _Dynamic_Send = _Send
 
-  def _SendToAdmins(self, request, response, log=logging.info):
+  def _SendToAdmins(self, request, response, log=None):
     """Implementation of MailServer::SendToAdmins().
 
     Logs email message.  Contents of attachments are not shown, only
@@ -319,17 +392,112 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     is, Sendmail and SMTP are disabled for this action.
 
     Args:
-      request: The message to send, a SendMailRequest.
-      response: The send response, a SendMailResponse.
+      request: The message to send, a mail_service_pb.MailMessage.
+      response: An unused api_base_pb.VoidProto.
       log: Log function to send log information.  Used for dependency
         injection.
     """
+    log = log or self._log_fn
+
+    self._ValidateExtensions(request)
+    mime_message = mail.mail_message_to_mime_message(request)
+    self._CacheMessage(mail.AdminEmailMessage(mime_message=mime_message))
     self._GenerateLog('SendToAdmins', request, log)
 
     if self._smtp_host and self._enable_sendmail:
       log('Both SMTP and sendmail are enabled.  Ignoring sendmail.')
 
   _Dynamic_SendToAdmins = _SendToAdmins
+
+  def _Dynamic_GetSentMessages(self, request, response):
+    """Get a list of all mail messages sent via the Mail API.
+
+    Used by the Java LocalMailService to retrieve all sent messages.
+
+    Args:
+      request: An unused api_base_pb.VoidProto.
+      response: An instance of
+        mail_local_helper_service_pb.GetSentMessagesResponse.
+    """
+    messages = self.get_sent_messages()
+    for m in messages:
+      new_message = response.add_sent_message()
+      new_message.MergeFrom(m.ToProto())
+
+  def _Dynamic_ClearSentMessages(self, request, response):
+    """Clear the list of sent messages and return the number cleared.
+
+    Args:
+      request: An unused api_base_pb.VoidProto.
+      response: An instance of
+        mail_local_helper_service_pb.ClearSentMessagesResponse.
+    """
+    original_messages_count = len(self._cached_messages)
+    self.Clear()
+    response.set_messages_cleared(original_messages_count)
+
+  def _Dynamic_GetLogMailBody(self, request, response):
+    response.set_log_mail_body(self._show_mail_body)
+
+  def _Dynamic_SetLogMailBody(self, request, response):
+    self._show_mail_body = request.log_mail_body()
+
+  def _Dynamic_GetLogMailLevel(self, unused_request, response):
+    response.set_log_mail_level(self._saved_log_level)
+
+  def _Dynamic_SetLogMailLevel(self, request, unused_response):
+    log_level = request.log_mail_level()
+    self._saved_log_level = log_level
+
+
+
+
+    try:
+      int_log_level = int(log_level)
+      self._log_fn = functools.partial(logging.log, int_log_level)
+    except ValueError:
+
+
+
+
+      if log_level == 'OFF':
+        def logNoOp(unused_msg, *unused_args, **unused_keywords):
+          pass
+        self._log_fn = logNoOp
+      elif log_level in JAVA_TO_PYTHON_LOG_LEVELS:
+        self._log_fn = functools.partial(logging.log,
+                                         JAVA_TO_PYTHON_LOG_LEVELS[log_level])
+
+  def _ValidateExtensions(self, request):
+    """Implementation of MailServer::Send().
+
+    Args:
+      request: The message to validate, a SendMailRequest.
+
+    Raises:
+      mail_errors.InvalidAttachmentTypeError if the attachment type is invalid.
+    """
+    attachments = request.attachment_list()
+    for attachment in attachments:
+      filename = attachment.filename()
+      if filename.startswith('.'):
+        raise apiproxy_errors.ApplicationError(
+            mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE,
+            'Invalid attachment type; attachments cannot be hidden files. '
+            'Received \'%s\'.' % filename)
+      if '.' not in filename:
+        raise apiproxy_errors.ApplicationError(
+            mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE,
+            'Invalid attachment type; attachments must have a file extension, '
+            'Received \'%s\'.' % filename)
+      extension = filename.rsplit('.')[-1].lower()
+      if extension in mail.EXTENSION_BLACKLIST:
+        raise apiproxy_errors.ApplicationError(
+            mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE,
+            'Invalid attachment type; attachments must not have a file '
+            'extension that is blacklisted. Received \'%s\'. The '
+            'extension type must be one of %s.' % (
+                filename, ','.join(mail.EXTENSION_BLACKLIST)))
 
 
 def _Base64EncodeAttachments(mime_message):

@@ -18,11 +18,14 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -33,6 +36,7 @@ else:
 
 from google.appengine.datastore.document_pb import *
 import google.appengine.datastore.document_pb
+google_dot_storage_dot_onestore_dot_v3_dot_document__pb = __import__('google.appengine.datastore.document_pb', {}, {}, [''])
 class SearchServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -96,7 +100,7 @@ class SearchServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -106,7 +110,7 @@ class SearchServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -252,7 +256,7 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -265,7 +269,7 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcode = 1
   kerror_detail = 2
@@ -551,7 +555,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -567,7 +571,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kconsistency = 2
@@ -696,7 +700,7 @@ class IndexMetadata_Storage(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -708,7 +712,7 @@ class IndexMetadata_Storage(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kamount_used = 1
   klimit = 2
@@ -752,11 +756,13 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   index_state_ = 0
   has_index_delete_time_ = 0
   index_delete_time_ = 0
+  has_num_shards_ = 0
+  num_shards_ = 1
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
     self.field_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def index_spec(self): return self.index_spec_
@@ -777,7 +783,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     return self.field_[i]
 
   def add_field(self):
-    x = FieldTypes()
+    x = google.appengine.datastore.document_pb.FieldTypes()
     self.field_.append(x)
     return x
 
@@ -828,14 +834,28 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_index_delete_time(self): return self.has_index_delete_time_
 
+  def num_shards(self): return self.num_shards_
+
+  def set_num_shards(self, x):
+    self.has_num_shards_ = 1
+    self.num_shards_ = x
+
+  def clear_num_shards(self):
+    if self.has_num_shards_:
+      self.has_num_shards_ = 0
+      self.num_shards_ = 1
+
+  def has_num_shards(self): return self.has_num_shards_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
-    for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
+    for i in range(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_storage()): self.mutable_storage().MergeFrom(x.storage())
     if (x.has_index_state()): self.set_index_state(x.index_state())
     if (x.has_index_delete_time()): self.set_index_delete_time(x.index_delete_time())
+    if (x.has_num_shards()): self.set_num_shards(x.num_shards())
 
   def Equals(self, x):
     if x is self: return 1
@@ -850,6 +870,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if self.has_index_state_ and self.index_state_ != x.index_state_: return 0
     if self.has_index_delete_time_ != x.has_index_delete_time_: return 0
     if self.has_index_delete_time_ and self.index_delete_time_ != x.index_delete_time_: return 0
+    if self.has_num_shards_ != x.has_num_shards_: return 0
+    if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -868,10 +890,11 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.index_spec_.ByteSize())
     n += 1 * len(self.field_)
-    for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
+    for i in range(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSize())
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_): n += 1 + self.lengthVarInt64(self.num_shards_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -880,10 +903,11 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.index_spec_.ByteSizePartial())
     n += 1 * len(self.field_)
-    for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
+    for i in range(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSizePartial())
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_): n += 1 + self.lengthVarInt64(self.num_shards_)
     return n
 
   def Clear(self):
@@ -892,12 +916,13 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     self.clear_storage()
     self.clear_index_state()
     self.clear_index_delete_time()
+    self.clear_num_shards()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putVarInt32(self.index_spec_.ByteSize())
     self.index_spec_.OutputUnchecked(out)
-    for i in xrange(len(self.field_)):
+    for i in range(len(self.field_)):
       out.putVarInt32(18)
       out.putVarInt32(self.field_[i].ByteSize())
       self.field_[i].OutputUnchecked(out)
@@ -911,13 +936,16 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_delete_time_):
       out.putVarInt32(40)
       out.putVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.num_shards_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
       out.putVarInt32(10)
       out.putVarInt32(self.index_spec_.ByteSizePartial())
       self.index_spec_.OutputPartial(out)
-    for i in xrange(len(self.field_)):
+    for i in range(len(self.field_)):
       out.putVarInt32(18)
       out.putVarInt32(self.field_[i].ByteSizePartial())
       self.field_[i].OutputPartial(out)
@@ -931,6 +959,9 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_delete_time_):
       out.putVarInt32(40)
       out.putVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.num_shards_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -959,9 +990,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_index_delete_time(d.getVarInt64())
         continue
+      if tt == 48:
+        self.set_num_shards(d.getVarInt32())
+        continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -985,17 +1019,19 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_index_state_: res+=prefix+("index_state: %s\n" % self.DebugFormatInt32(self.index_state_))
     if self.has_index_delete_time_: res+=prefix+("index_delete_time: %s\n" % self.DebugFormatInt64(self.index_delete_time_))
+    if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kindex_spec = 1
   kfield = 2
   kstorage = 3
   kindex_state = 4
   kindex_delete_time = 5
+  knum_shards = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1004,7 +1040,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: "storage",
     4: "index_state",
     5: "index_delete_time",
-  }, 5)
+    6: "num_shards",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1013,7 +1050,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1052,7 +1090,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
     return self.document_[i]
 
   def add_document(self):
-    x = Document()
+    x = google.appengine.datastore.document_pb.Document()
     self.document_.append(x)
     return x
 
@@ -1082,7 +1120,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.document_size()): self.add_document().CopyFrom(x.document(i))
+    for i in range(x.document_size()): self.add_document().CopyFrom(x.document(i))
     if (x.has_freshness()): self.set_freshness(x.freshness())
     if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
 
@@ -1111,7 +1149,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.document_)
-    for i in xrange(len(self.document_)): n += self.lengthString(self.document_[i].ByteSize())
+    for i in range(len(self.document_)): n += self.lengthString(self.document_[i].ByteSize())
     if (self.has_freshness_): n += 1 + self.lengthVarInt64(self.freshness_)
     n += self.lengthString(self.index_spec_.ByteSize())
     return n + 1
@@ -1119,7 +1157,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.document_)
-    for i in xrange(len(self.document_)): n += self.lengthString(self.document_[i].ByteSizePartial())
+    for i in range(len(self.document_)): n += self.lengthString(self.document_[i].ByteSizePartial())
     if (self.has_freshness_): n += 1 + self.lengthVarInt64(self.freshness_)
     if (self.has_index_spec_):
       n += 1
@@ -1132,7 +1170,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
     self.clear_index_spec()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.document_)):
+    for i in range(len(self.document_)):
       out.putVarInt32(10)
       out.putVarInt32(self.document_[i].ByteSize())
       self.document_[i].OutputUnchecked(out)
@@ -1144,7 +1182,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
     self.index_spec_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.document_)):
+    for i in range(len(self.document_)):
       out.putVarInt32(10)
       out.putVarInt32(self.document_[i].ByteSizePartial())
       self.document_[i].OutputPartial(out)
@@ -1176,7 +1214,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1199,7 +1237,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdocument = 1
   kfreshness = 2
@@ -1325,7 +1363,7 @@ class IndexDocumentRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1340,7 +1378,7 @@ class IndexDocumentRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 3
@@ -1361,9 +1399,11 @@ class IndexDocumentRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexDocumentRequest'
-class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
+class IndexDocumentResponse(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.status_ = []
     self.doc_id_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -1402,8 +1442,9 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.status_size()): self.add_status().CopyFrom(x.status(i))
-    for i in xrange(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
+    for i in range(x.status_size()): self.add_status().CopyFrom(x.status(i))
+    for i in range(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
@@ -1413,6 +1454,7 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
     if len(self.doc_id_) != len(x.doc_id_): return 0
     for e1, e2 in zip(self.doc_id_, x.doc_id_):
       if e1 != e2: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1424,40 +1466,55 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
     n += 1 * len(self.doc_id_)
-    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    for i in range(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
     n += 1 * len(self.doc_id_)
-    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    for i in range(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_status()
     self.clear_doc_id()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.status_)):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSize())
       self.status_[i].OutputUnchecked(out)
-    for i in xrange(len(self.doc_id_)):
+    for i in range(len(self.doc_id_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.doc_id_[i])
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 10000)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.status_)):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSizePartial())
       self.status_[i].OutputPartial(out)
-    for i in xrange(len(self.doc_id_)):
+    for i in range(len(self.doc_id_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.doc_id_[i])
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 10000)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1471,9 +1528,13 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 18:
         self.add_doc_id(d.getPrefixedString())
         continue
+      if _extension_runtime:
+        if (1000 <= tt and tt < 10000):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1493,11 +1554,15 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("doc_id%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
   kdoc_id = 2
@@ -1552,7 +1617,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
+    for i in range(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
     if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
 
   def Equals(self, x):
@@ -1576,14 +1641,14 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.doc_id_)
-    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    for i in range(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     n += self.lengthString(self.index_spec_.ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.doc_id_)
-    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
+    for i in range(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     if (self.has_index_spec_):
       n += 1
       n += self.lengthString(self.index_spec_.ByteSizePartial())
@@ -1594,7 +1659,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
     self.clear_index_spec()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.doc_id_)):
+    for i in range(len(self.doc_id_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.doc_id_[i])
     out.putVarInt32(18)
@@ -1602,7 +1667,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
     self.index_spec_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.doc_id_)):
+    for i in range(len(self.doc_id_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.doc_id_[i])
     if (self.has_index_spec_):
@@ -1624,7 +1689,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1644,7 +1709,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdoc_id = 1
   kindex_spec = 2
@@ -1767,7 +1832,7 @@ class DeleteDocumentRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1782,7 +1847,7 @@ class DeleteDocumentRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 3
@@ -1828,7 +1893,7 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.status_size()): self.add_status().CopyFrom(x.status(i))
+    for i in range(x.status_size()): self.add_status().CopyFrom(x.status(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -1846,26 +1911,26 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_status()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.status_)):
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSize())
       self.status_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.status_)):
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSizePartial())
       self.status_[i].OutputPartial(out)
@@ -1881,7 +1946,7 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1899,7 +1964,7 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
 
@@ -2109,7 +2174,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2127,7 +2192,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kindex_spec = 1
   kstart_doc_id = 2
@@ -2259,7 +2324,7 @@ class ListDocumentsRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2274,7 +2339,7 @@ class ListDocumentsRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 2
@@ -2321,7 +2386,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
     return self.document_[i]
 
   def add_document(self):
-    x = Document()
+    x = google.appengine.datastore.document_pb.Document()
     self.document_.append(x)
     return x
 
@@ -2331,7 +2396,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_status()): self.mutable_status().MergeFrom(x.status())
-    for i in xrange(x.document_size()): self.add_document().CopyFrom(x.document(i))
+    for i in range(x.document_size()): self.add_document().CopyFrom(x.document(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -2357,7 +2422,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.status_.ByteSize())
     n += 1 * len(self.document_)
-    for i in xrange(len(self.document_)): n += self.lengthString(self.document_[i].ByteSize())
+    for i in range(len(self.document_)): n += self.lengthString(self.document_[i].ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -2366,7 +2431,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.status_.ByteSizePartial())
     n += 1 * len(self.document_)
-    for i in xrange(len(self.document_)): n += self.lengthString(self.document_[i].ByteSizePartial())
+    for i in range(len(self.document_)): n += self.lengthString(self.document_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -2377,7 +2442,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(10)
     out.putVarInt32(self.status_.ByteSize())
     self.status_.OutputUnchecked(out)
-    for i in xrange(len(self.document_)):
+    for i in range(len(self.document_)):
       out.putVarInt32(18)
       out.putVarInt32(self.document_[i].ByteSize())
       self.document_[i].OutputUnchecked(out)
@@ -2387,7 +2452,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.status_.ByteSizePartial())
       self.status_.OutputPartial(out)
-    for i in xrange(len(self.document_)):
+    for i in range(len(self.document_)):
       out.putVarInt32(18)
       out.putVarInt32(self.document_[i].ByteSizePartial())
       self.document_[i].OutputPartial(out)
@@ -2409,7 +2474,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2431,7 +2496,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
   kdocument = 2
@@ -2524,7 +2589,7 @@ class DeleteIndexParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2538,7 +2603,7 @@ class DeleteIndexParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kindex_spec = 1
 
@@ -2658,7 +2723,7 @@ class DeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2673,7 +2738,7 @@ class DeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 2
@@ -2766,7 +2831,7 @@ class DeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2780,7 +2845,7 @@ class DeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
 
@@ -2870,7 +2935,7 @@ class CancelDeleteIndexParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2884,7 +2949,7 @@ class CancelDeleteIndexParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kindex_spec = 1
 
@@ -3004,7 +3069,7 @@ class CancelDeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3019,7 +3084,7 @@ class CancelDeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 2
@@ -3112,7 +3177,7 @@ class CancelDeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3126,7 +3191,7 @@ class CancelDeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
 
@@ -3420,7 +3485,7 @@ class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3438,7 +3503,7 @@ class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfetch_schema = 1
   klimit = 2
@@ -3579,7 +3644,7 @@ class ListIndexesRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3594,7 +3659,7 @@ class ListIndexesRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 3
@@ -3651,7 +3716,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_status()): self.mutable_status().MergeFrom(x.status())
-    for i in xrange(x.index_metadata_size()): self.add_index_metadata().CopyFrom(x.index_metadata(i))
+    for i in range(x.index_metadata_size()): self.add_index_metadata().CopyFrom(x.index_metadata(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -3677,7 +3742,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.status_.ByteSize())
     n += 1 * len(self.index_metadata_)
-    for i in xrange(len(self.index_metadata_)): n += self.lengthString(self.index_metadata_[i].ByteSize())
+    for i in range(len(self.index_metadata_)): n += self.lengthString(self.index_metadata_[i].ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -3686,7 +3751,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.status_.ByteSizePartial())
     n += 1 * len(self.index_metadata_)
-    for i in xrange(len(self.index_metadata_)): n += self.lengthString(self.index_metadata_[i].ByteSizePartial())
+    for i in range(len(self.index_metadata_)): n += self.lengthString(self.index_metadata_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -3697,7 +3762,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(10)
     out.putVarInt32(self.status_.ByteSize())
     self.status_.OutputUnchecked(out)
-    for i in xrange(len(self.index_metadata_)):
+    for i in range(len(self.index_metadata_)):
       out.putVarInt32(18)
       out.putVarInt32(self.index_metadata_[i].ByteSize())
       self.index_metadata_[i].OutputUnchecked(out)
@@ -3707,7 +3772,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.status_.ByteSizePartial())
       self.status_.OutputPartial(out)
-    for i in xrange(len(self.index_metadata_)):
+    for i in range(len(self.index_metadata_)):
       out.putVarInt32(18)
       out.putVarInt32(self.index_metadata_[i].ByteSizePartial())
       self.index_metadata_[i].OutputPartial(out)
@@ -3729,7 +3794,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3751,7 +3816,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
   kindex_metadata = 2
@@ -3775,6 +3840,8 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
 class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
   has_source_ = 0
   source_ = 0
+  has_require_empty_index_ = 0
+  require_empty_index_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = []
@@ -3809,11 +3876,25 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
 
   def clear_index_spec(self):
     self.index_spec_ = []
+  def require_empty_index(self): return self.require_empty_index_
+
+  def set_require_empty_index(self, x):
+    self.has_require_empty_index_ = 1
+    self.require_empty_index_ = x
+
+  def clear_require_empty_index(self):
+    if self.has_require_empty_index_:
+      self.has_require_empty_index_ = 0
+      self.require_empty_index_ = 0
+
+  def has_require_empty_index(self): return self.has_require_empty_index_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_source()): self.set_source(x.source())
-    for i in xrange(x.index_spec_size()): self.add_index_spec().CopyFrom(x.index_spec(i))
+    for i in range(x.index_spec_size()): self.add_index_spec().CopyFrom(x.index_spec(i))
+    if (x.has_require_empty_index()): self.set_require_empty_index(x.require_empty_index())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3822,6 +3903,8 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
     if len(self.index_spec_) != len(x.index_spec_): return 0
     for e1, e2 in zip(self.index_spec_, x.index_spec_):
       if e1 != e2: return 0
+    if self.has_require_empty_index_ != x.has_require_empty_index_: return 0
+    if self.has_require_empty_index_ and self.require_empty_index_ != x.require_empty_index_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3834,37 +3917,46 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     n += 1 * len(self.index_spec_)
-    for i in xrange(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSize())
+    for i in range(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSize())
+    if (self.has_require_empty_index_): n += 2
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     n += 1 * len(self.index_spec_)
-    for i in xrange(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSizePartial())
+    for i in range(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSizePartial())
+    if (self.has_require_empty_index_): n += 2
     return n
 
   def Clear(self):
     self.clear_source()
     self.clear_index_spec()
+    self.clear_require_empty_index()
 
   def OutputUnchecked(self, out):
     if (self.has_source_):
       out.putVarInt32(8)
       out.putVarInt32(self.source_)
-    for i in xrange(len(self.index_spec_)):
+    for i in range(len(self.index_spec_)):
       out.putVarInt32(18)
       out.putVarInt32(self.index_spec_[i].ByteSize())
       self.index_spec_[i].OutputUnchecked(out)
+    if (self.has_require_empty_index_):
+      out.putVarInt32(24)
+      out.putBoolean(self.require_empty_index_)
 
   def OutputPartial(self, out):
     if (self.has_source_):
       out.putVarInt32(8)
       out.putVarInt32(self.source_)
-    for i in xrange(len(self.index_spec_)):
+    for i in range(len(self.index_spec_)):
       out.putVarInt32(18)
       out.putVarInt32(self.index_spec_[i].ByteSizePartial())
       self.index_spec_[i].OutputPartial(out)
+    if (self.has_require_empty_index_):
+      out.putVarInt32(24)
+      out.putBoolean(self.require_empty_index_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3878,9 +3970,12 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_index_spec().TryMerge(tmp)
         continue
+      if tt == 24:
+        self.set_require_empty_index(d.getBoolean())
+        continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3895,26 +3990,30 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_require_empty_index_: res+=prefix+("require_empty_index: %s\n" % self.DebugFormatBool(self.require_empty_index_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksource = 1
   kindex_spec = 2
+  krequire_empty_index = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "source",
     2: "index_spec",
-  }, 2)
+    3: "require_empty_index",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4022,7 +4121,7 @@ class DeleteSchemaRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4037,7 +4136,7 @@ class DeleteSchemaRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 3
@@ -4083,7 +4182,7 @@ class DeleteSchemaResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.status_size()): self.add_status().CopyFrom(x.status(i))
+    for i in range(x.status_size()): self.add_status().CopyFrom(x.status(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -4101,26 +4200,26 @@ class DeleteSchemaResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.status_)
-    for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
+    for i in range(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_status()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.status_)):
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSize())
       self.status_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.status_)):
+    for i in range(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSizePartial())
       self.status_[i].OutputPartial(out)
@@ -4136,7 +4235,7 @@ class DeleteSchemaResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4154,7 +4253,7 @@ class DeleteSchemaResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstatus = 1
 
@@ -4333,7 +4432,7 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4347,7 +4446,7 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksort_expression = 1
   ksort_descending = 2
@@ -4513,7 +4612,7 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4526,7 +4625,7 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kscorer = 1
   klimit = 2
@@ -4657,7 +4756,7 @@ class FieldSpec_Expression(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4708,8 +4807,8 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.name_size()): self.add_name(x.name(i))
-    for i in xrange(x.expression_size()): self.add_expression().CopyFrom(x.expression(i))
+    for i in range(x.name_size()): self.add_name(x.name(i))
+    for i in range(x.expression_size()): self.add_expression().CopyFrom(x.expression(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -4730,17 +4829,17 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.name_)
-    for i in xrange(len(self.name_)): n += self.lengthString(len(self.name_[i]))
+    for i in range(len(self.name_)): n += self.lengthString(len(self.name_[i]))
     n += 2 * len(self.expression_)
-    for i in xrange(len(self.expression_)): n += self.expression_[i].ByteSize()
+    for i in range(len(self.expression_)): n += self.expression_[i].ByteSize()
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.name_)
-    for i in xrange(len(self.name_)): n += self.lengthString(len(self.name_[i]))
+    for i in range(len(self.name_)): n += self.lengthString(len(self.name_[i]))
     n += 2 * len(self.expression_)
-    for i in xrange(len(self.expression_)): n += self.expression_[i].ByteSizePartial()
+    for i in range(len(self.expression_)): n += self.expression_[i].ByteSizePartial()
     return n
 
   def Clear(self):
@@ -4748,19 +4847,19 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
     self.clear_expression()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.name_)):
+    for i in range(len(self.name_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.name_[i])
-    for i in xrange(len(self.expression_)):
+    for i in range(len(self.expression_)):
       out.putVarInt32(19)
       self.expression_[i].OutputUnchecked(out)
       out.putVarInt32(20)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.name_)):
+    for i in range(len(self.name_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.name_[i])
-    for i in xrange(len(self.expression_)):
+    for i in range(len(self.expression_)):
       out.putVarInt32(19)
       self.expression_[i].OutputPartial(out)
       out.putVarInt32(20)
@@ -4776,7 +4875,7 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4800,7 +4899,7 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kExpressionGroup = 2
@@ -4953,7 +5052,7 @@ class FacetRange(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4966,7 +5065,7 @@ class FacetRange(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kstart = 2
@@ -5047,8 +5146,8 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_value_limit()): self.set_value_limit(x.value_limit())
-    for i in xrange(x.range_size()): self.add_range().CopyFrom(x.range(i))
-    for i in xrange(x.value_constraint_size()): self.add_value_constraint(x.value_constraint(i))
+    for i in range(x.range_size()): self.add_range().CopyFrom(x.range(i))
+    for i in range(x.value_constraint_size()): self.add_value_constraint(x.value_constraint(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -5072,18 +5171,18 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_value_limit_): n += 1 + self.lengthVarInt64(self.value_limit_)
     n += 1 * len(self.range_)
-    for i in xrange(len(self.range_)): n += self.lengthString(self.range_[i].ByteSize())
+    for i in range(len(self.range_)): n += self.lengthString(self.range_[i].ByteSize())
     n += 1 * len(self.value_constraint_)
-    for i in xrange(len(self.value_constraint_)): n += self.lengthString(len(self.value_constraint_[i]))
+    for i in range(len(self.value_constraint_)): n += self.lengthString(len(self.value_constraint_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_value_limit_): n += 1 + self.lengthVarInt64(self.value_limit_)
     n += 1 * len(self.range_)
-    for i in xrange(len(self.range_)): n += self.lengthString(self.range_[i].ByteSizePartial())
+    for i in range(len(self.range_)): n += self.lengthString(self.range_[i].ByteSizePartial())
     n += 1 * len(self.value_constraint_)
-    for i in xrange(len(self.value_constraint_)): n += self.lengthString(len(self.value_constraint_[i]))
+    for i in range(len(self.value_constraint_)): n += self.lengthString(len(self.value_constraint_[i]))
     return n
 
   def Clear(self):
@@ -5095,11 +5194,11 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
     if (self.has_value_limit_):
       out.putVarInt32(8)
       out.putVarInt32(self.value_limit_)
-    for i in xrange(len(self.range_)):
+    for i in range(len(self.range_)):
       out.putVarInt32(18)
       out.putVarInt32(self.range_[i].ByteSize())
       self.range_[i].OutputUnchecked(out)
-    for i in xrange(len(self.value_constraint_)):
+    for i in range(len(self.value_constraint_)):
       out.putVarInt32(26)
       out.putPrefixedString(self.value_constraint_[i])
 
@@ -5107,11 +5206,11 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
     if (self.has_value_limit_):
       out.putVarInt32(8)
       out.putVarInt32(self.value_limit_)
-    for i in xrange(len(self.range_)):
+    for i in range(len(self.range_)):
       out.putVarInt32(18)
       out.putVarInt32(self.range_[i].ByteSizePartial())
       self.range_[i].OutputPartial(out)
-    for i in xrange(len(self.value_constraint_)):
+    for i in range(len(self.value_constraint_)):
       out.putVarInt32(26)
       out.putPrefixedString(self.value_constraint_[i])
 
@@ -5132,7 +5231,7 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5157,7 +5256,7 @@ class FacetRequestParam(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue_limit = 1
   krange = 2
@@ -5247,7 +5346,7 @@ class FacetAutoDetectParam(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5258,7 +5357,7 @@ class FacetAutoDetectParam(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kvalue_limit = 1
 
@@ -5283,7 +5382,7 @@ class FacetRequest(ProtocolBuffer.ProtocolMessage):
   params_ = None
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def name(self): return self.name_
@@ -5390,7 +5489,7 @@ class FacetRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5405,7 +5504,7 @@ class FacetRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kparams = 2
@@ -5522,7 +5621,7 @@ class FacetRefinement_Range(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5534,7 +5633,7 @@ class FacetRefinement_Range(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstart = 1
   kend = 2
@@ -5564,7 +5663,7 @@ class FacetRefinement(ProtocolBuffer.ProtocolMessage):
   range_ = None
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def name(self): return self.name_
@@ -5699,7 +5798,7 @@ class FacetRefinement(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5715,7 +5814,7 @@ class FacetRefinement(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kvalue = 2
@@ -5795,13 +5894,15 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   facet_auto_detect_param_ = None
   has_facet_depth_ = 0
   facet_depth_ = 1000
+  has_enable_query_rewrite_ = 0
+  enable_query_rewrite_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
     self.sort_spec_ = []
     self.include_facet_ = []
     self.facet_refinement_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def index_spec(self): return self.index_spec_
@@ -6047,6 +6148,19 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
 
   def has_facet_depth(self): return self.has_facet_depth_
 
+  def enable_query_rewrite(self): return self.enable_query_rewrite_
+
+  def set_enable_query_rewrite(self, x):
+    self.has_enable_query_rewrite_ = 1
+    self.enable_query_rewrite_ = x
+
+  def clear_enable_query_rewrite(self):
+    if self.has_enable_query_rewrite_:
+      self.has_enable_query_rewrite_ = 0
+      self.enable_query_rewrite_ = 0
+
+  def has_enable_query_rewrite(self): return self.has_enable_query_rewrite_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6057,16 +6171,17 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (x.has_cursor_type()): self.set_cursor_type(x.cursor_type())
     if (x.has_limit()): self.set_limit(x.limit())
     if (x.has_matched_count_accuracy()): self.set_matched_count_accuracy(x.matched_count_accuracy())
-    for i in xrange(x.sort_spec_size()): self.add_sort_spec().CopyFrom(x.sort_spec(i))
+    for i in range(x.sort_spec_size()): self.add_sort_spec().CopyFrom(x.sort_spec(i))
     if (x.has_scorer_spec()): self.mutable_scorer_spec().MergeFrom(x.scorer_spec())
     if (x.has_field_spec()): self.mutable_field_spec().MergeFrom(x.field_spec())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_parsing_mode()): self.set_parsing_mode(x.parsing_mode())
     if (x.has_auto_discover_facet_count()): self.set_auto_discover_facet_count(x.auto_discover_facet_count())
-    for i in xrange(x.include_facet_size()): self.add_include_facet().CopyFrom(x.include_facet(i))
-    for i in xrange(x.facet_refinement_size()): self.add_facet_refinement().CopyFrom(x.facet_refinement(i))
+    for i in range(x.include_facet_size()): self.add_include_facet().CopyFrom(x.include_facet(i))
+    for i in range(x.facet_refinement_size()): self.add_facet_refinement().CopyFrom(x.facet_refinement(i))
     if (x.has_facet_auto_detect_param()): self.mutable_facet_auto_detect_param().MergeFrom(x.facet_auto_detect_param())
     if (x.has_facet_depth()): self.set_facet_depth(x.facet_depth())
+    if (x.has_enable_query_rewrite()): self.set_enable_query_rewrite(x.enable_query_rewrite())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6107,6 +6222,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if self.has_facet_auto_detect_param_ and self.facet_auto_detect_param_ != x.facet_auto_detect_param_: return 0
     if self.has_facet_depth_ != x.has_facet_depth_: return 0
     if self.has_facet_depth_ and self.facet_depth_ != x.facet_depth_: return 0
+    if self.has_enable_query_rewrite_ != x.has_enable_query_rewrite_: return 0
+    if self.has_enable_query_rewrite_ and self.enable_query_rewrite_ != x.enable_query_rewrite_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6141,18 +6258,19 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
     if (self.has_matched_count_accuracy_): n += 1 + self.lengthVarInt64(self.matched_count_accuracy_)
     n += 1 * len(self.sort_spec_)
-    for i in xrange(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSize())
+    for i in range(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSize())
     if (self.has_scorer_spec_): n += 1 + self.lengthString(self.scorer_spec_.ByteSize())
     if (self.has_field_spec_): n += 1 + self.lengthString(self.field_spec_.ByteSize())
     if (self.has_keys_only_): n += 2
     if (self.has_parsing_mode_): n += 1 + self.lengthVarInt64(self.parsing_mode_)
     if (self.has_auto_discover_facet_count_): n += 1 + self.lengthVarInt64(self.auto_discover_facet_count_)
     n += 2 * len(self.include_facet_)
-    for i in xrange(len(self.include_facet_)): n += self.lengthString(self.include_facet_[i].ByteSize())
+    for i in range(len(self.include_facet_)): n += self.lengthString(self.include_facet_[i].ByteSize())
     n += 2 * len(self.facet_refinement_)
-    for i in xrange(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSize())
+    for i in range(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSize())
     if (self.has_facet_auto_detect_param_): n += 2 + self.lengthString(self.facet_auto_detect_param_.ByteSize())
     if (self.has_facet_depth_): n += 2 + self.lengthVarInt64(self.facet_depth_)
+    if (self.has_enable_query_rewrite_): n += 3
     return n + 2
 
   def ByteSizePartial(self):
@@ -6169,18 +6287,19 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
     if (self.has_matched_count_accuracy_): n += 1 + self.lengthVarInt64(self.matched_count_accuracy_)
     n += 1 * len(self.sort_spec_)
-    for i in xrange(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSizePartial())
+    for i in range(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSizePartial())
     if (self.has_scorer_spec_): n += 1 + self.lengthString(self.scorer_spec_.ByteSizePartial())
     if (self.has_field_spec_): n += 1 + self.lengthString(self.field_spec_.ByteSizePartial())
     if (self.has_keys_only_): n += 2
     if (self.has_parsing_mode_): n += 1 + self.lengthVarInt64(self.parsing_mode_)
     if (self.has_auto_discover_facet_count_): n += 1 + self.lengthVarInt64(self.auto_discover_facet_count_)
     n += 2 * len(self.include_facet_)
-    for i in xrange(len(self.include_facet_)): n += self.lengthString(self.include_facet_[i].ByteSizePartial())
+    for i in range(len(self.include_facet_)): n += self.lengthString(self.include_facet_[i].ByteSizePartial())
     n += 2 * len(self.facet_refinement_)
-    for i in xrange(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSizePartial())
+    for i in range(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSizePartial())
     if (self.has_facet_auto_detect_param_): n += 2 + self.lengthString(self.facet_auto_detect_param_.ByteSizePartial())
     if (self.has_facet_depth_): n += 2 + self.lengthVarInt64(self.facet_depth_)
+    if (self.has_enable_query_rewrite_): n += 3
     return n
 
   def Clear(self):
@@ -6201,6 +6320,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     self.clear_facet_refinement()
     self.clear_facet_auto_detect_param()
     self.clear_facet_depth()
+    self.clear_enable_query_rewrite()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -6220,7 +6340,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_matched_count_accuracy_):
       out.putVarInt32(56)
       out.putVarInt32(self.matched_count_accuracy_)
-    for i in xrange(len(self.sort_spec_)):
+    for i in range(len(self.sort_spec_)):
       out.putVarInt32(66)
       out.putVarInt32(self.sort_spec_[i].ByteSize())
       self.sort_spec_[i].OutputUnchecked(out)
@@ -6244,11 +6364,11 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_auto_discover_facet_count_):
       out.putVarInt32(120)
       out.putVarInt32(self.auto_discover_facet_count_)
-    for i in xrange(len(self.include_facet_)):
+    for i in range(len(self.include_facet_)):
       out.putVarInt32(130)
       out.putVarInt32(self.include_facet_[i].ByteSize())
       self.include_facet_[i].OutputUnchecked(out)
-    for i in xrange(len(self.facet_refinement_)):
+    for i in range(len(self.facet_refinement_)):
       out.putVarInt32(138)
       out.putVarInt32(self.facet_refinement_[i].ByteSize())
       self.facet_refinement_[i].OutputUnchecked(out)
@@ -6259,6 +6379,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_facet_depth_):
       out.putVarInt32(152)
       out.putVarInt32(self.facet_depth_)
+    if (self.has_enable_query_rewrite_):
+      out.putVarInt32(160)
+      out.putBoolean(self.enable_query_rewrite_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
@@ -6280,7 +6403,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_matched_count_accuracy_):
       out.putVarInt32(56)
       out.putVarInt32(self.matched_count_accuracy_)
-    for i in xrange(len(self.sort_spec_)):
+    for i in range(len(self.sort_spec_)):
       out.putVarInt32(66)
       out.putVarInt32(self.sort_spec_[i].ByteSizePartial())
       self.sort_spec_[i].OutputPartial(out)
@@ -6304,11 +6427,11 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_auto_discover_facet_count_):
       out.putVarInt32(120)
       out.putVarInt32(self.auto_discover_facet_count_)
-    for i in xrange(len(self.include_facet_)):
+    for i in range(len(self.include_facet_)):
       out.putVarInt32(130)
       out.putVarInt32(self.include_facet_[i].ByteSizePartial())
       self.include_facet_[i].OutputPartial(out)
-    for i in xrange(len(self.facet_refinement_)):
+    for i in range(len(self.facet_refinement_)):
       out.putVarInt32(138)
       out.putVarInt32(self.facet_refinement_[i].ByteSizePartial())
       self.facet_refinement_[i].OutputPartial(out)
@@ -6319,6 +6442,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_facet_depth_):
       out.putVarInt32(152)
       out.putVarInt32(self.facet_depth_)
+    if (self.has_enable_query_rewrite_):
+      out.putVarInt32(160)
+      out.putBoolean(self.enable_query_rewrite_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6395,9 +6521,12 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
       if tt == 152:
         self.set_facet_depth(d.getVarInt32())
         continue
+      if tt == 160:
+        self.set_enable_query_rewrite(d.getBoolean())
+        continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -6453,11 +6582,12 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
       res+=self.facet_auto_detect_param_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_facet_depth_: res+=prefix+("facet_depth: %s\n" % self.DebugFormatInt32(self.facet_depth_))
+    if self.has_enable_query_rewrite_: res+=prefix+("enable_query_rewrite: %s\n" % self.DebugFormatBool(self.enable_query_rewrite_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kindex_spec = 1
   kquery = 2
@@ -6476,6 +6606,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   kfacet_refinement = 17
   kfacet_auto_detect_param = 18
   kfacet_depth = 19
+  kenable_query_rewrite = 20
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6496,7 +6627,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     17: "facet_refinement",
     18: "facet_auto_detect_param",
     19: "facet_depth",
-  }, 19)
+    20: "enable_query_rewrite",
+  }, 20)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6517,7 +6649,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     17: ProtocolBuffer.Encoder.STRING,
     18: ProtocolBuffer.Encoder.STRING,
     19: ProtocolBuffer.Encoder.NUMERIC,
-  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
+    20: ProtocolBuffer.Encoder.NUMERIC,
+  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6625,7 +6758,7 @@ class SearchRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -6640,7 +6773,7 @@ class SearchRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kparams = 1
   kapp_id = 3
@@ -6803,7 +6936,7 @@ class FacetResultValue(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -6819,7 +6952,7 @@ class FacetResultValue(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kcount = 2
@@ -6884,7 +7017,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_name()): self.set_name(x.name())
-    for i in xrange(x.value_size()): self.add_value().CopyFrom(x.value(i))
+    for i in range(x.value_size()): self.add_value().CopyFrom(x.value(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -6909,7 +7042,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.name_))
     n += 1 * len(self.value_)
-    for i in xrange(len(self.value_)): n += self.lengthString(self.value_[i].ByteSize())
+    for i in range(len(self.value_)): n += self.lengthString(self.value_[i].ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -6918,7 +7051,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.name_))
     n += 1 * len(self.value_)
-    for i in xrange(len(self.value_)): n += self.lengthString(self.value_[i].ByteSizePartial())
+    for i in range(len(self.value_)): n += self.lengthString(self.value_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -6928,7 +7061,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.name_)
-    for i in xrange(len(self.value_)):
+    for i in range(len(self.value_)):
       out.putVarInt32(18)
       out.putVarInt32(self.value_[i].ByteSize())
       self.value_[i].OutputUnchecked(out)
@@ -6937,7 +7070,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_):
       out.putVarInt32(10)
       out.putPrefixedString(self.name_)
-    for i in xrange(len(self.value_)):
+    for i in range(len(self.value_)):
       out.putVarInt32(18)
       out.putVarInt32(self.value_[i].ByteSizePartial())
       self.value_[i].OutputPartial(out)
@@ -6956,7 +7089,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -6975,7 +7108,7 @@ class FacetResult(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kvalue = 2
@@ -7002,7 +7135,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
   cursor_ = ""
 
   def __init__(self, contents=None):
-    self.document_ = Document()
+    self.document_ = google.appengine.datastore.document_pb.Document()
     self.expression_ = []
     self.score_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -7025,7 +7158,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
     return self.expression_[i]
 
   def add_expression(self):
-    x = Field()
+    x = google.appengine.datastore.document_pb.Field()
     self.expression_.append(x)
     return x
 
@@ -7063,8 +7196,8 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_document()): self.mutable_document().MergeFrom(x.document())
-    for i in xrange(x.expression_size()): self.add_expression().CopyFrom(x.expression(i))
-    for i in xrange(x.score_size()): self.add_score(x.score(i))
+    for i in range(x.expression_size()): self.add_expression().CopyFrom(x.expression(i))
+    for i in range(x.score_size()): self.add_score(x.score(i))
     if (x.has_cursor()): self.set_cursor(x.cursor())
 
   def Equals(self, x):
@@ -7096,7 +7229,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.document_.ByteSize())
     n += 1 * len(self.expression_)
-    for i in xrange(len(self.expression_)): n += self.lengthString(self.expression_[i].ByteSize())
+    for i in range(len(self.expression_)): n += self.lengthString(self.expression_[i].ByteSize())
     n += 9 * len(self.score_)
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     return n + 1
@@ -7107,7 +7240,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.document_.ByteSizePartial())
     n += 1 * len(self.expression_)
-    for i in xrange(len(self.expression_)): n += self.lengthString(self.expression_[i].ByteSizePartial())
+    for i in range(len(self.expression_)): n += self.lengthString(self.expression_[i].ByteSizePartial())
     n += 9 * len(self.score_)
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     return n
@@ -7122,13 +7255,13 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(10)
     out.putVarInt32(self.document_.ByteSize())
     self.document_.OutputUnchecked(out)
-    for i in xrange(len(self.score_)):
+    for i in range(len(self.score_)):
       out.putVarInt32(17)
       out.putDouble(self.score_[i])
     if (self.has_cursor_):
       out.putVarInt32(26)
       out.putPrefixedString(self.cursor_)
-    for i in xrange(len(self.expression_)):
+    for i in range(len(self.expression_)):
       out.putVarInt32(34)
       out.putVarInt32(self.expression_[i].ByteSize())
       self.expression_[i].OutputUnchecked(out)
@@ -7138,13 +7271,13 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.document_.ByteSizePartial())
       self.document_.OutputPartial(out)
-    for i in xrange(len(self.score_)):
+    for i in range(len(self.score_)):
       out.putVarInt32(17)
       out.putDouble(self.score_[i])
     if (self.has_cursor_):
       out.putVarInt32(26)
       out.putPrefixedString(self.cursor_)
-    for i in xrange(len(self.expression_)):
+    for i in range(len(self.expression_)):
       out.putVarInt32(34)
       out.putVarInt32(self.expression_[i].ByteSizePartial())
       self.expression_[i].OutputPartial(out)
@@ -7172,7 +7305,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -7201,7 +7334,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdocument = 1
   kexpression = 4
@@ -7327,11 +7460,11 @@ class SearchResponse(_ExtendableProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.result_size()): self.add_result().CopyFrom(x.result(i))
+    for i in range(x.result_size()): self.add_result().CopyFrom(x.result(i))
     if (x.has_matched_count()): self.set_matched_count(x.matched_count())
     if (x.has_status()): self.mutable_status().MergeFrom(x.status())
     if (x.has_cursor()): self.set_cursor(x.cursor())
-    for i in xrange(x.facet_result_size()): self.add_facet_result().CopyFrom(x.facet_result(i))
+    for i in range(x.facet_result_size()): self.add_facet_result().CopyFrom(x.facet_result(i))
     if (x.has_docs_scored()): self.set_docs_scored(x.docs_scored())
     if _extension_runtime: self._MergeExtensionFields(x)
 
@@ -7374,12 +7507,12 @@ class SearchResponse(_ExtendableProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.result_)
-    for i in xrange(len(self.result_)): n += self.lengthString(self.result_[i].ByteSize())
+    for i in range(len(self.result_)): n += self.lengthString(self.result_[i].ByteSize())
     n += self.lengthVarInt64(self.matched_count_)
     n += self.lengthString(self.status_.ByteSize())
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     n += 1 * len(self.facet_result_)
-    for i in xrange(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSize())
+    for i in range(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSize())
     if (self.has_docs_scored_): n += 1 + self.lengthVarInt64(self.docs_scored_)
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
@@ -7388,7 +7521,7 @@ class SearchResponse(_ExtendableProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.result_)
-    for i in xrange(len(self.result_)): n += self.lengthString(self.result_[i].ByteSizePartial())
+    for i in range(len(self.result_)): n += self.lengthString(self.result_[i].ByteSizePartial())
     if (self.has_matched_count_):
       n += 1
       n += self.lengthVarInt64(self.matched_count_)
@@ -7397,7 +7530,7 @@ class SearchResponse(_ExtendableProtocolMessage):
       n += self.lengthString(self.status_.ByteSizePartial())
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     n += 1 * len(self.facet_result_)
-    for i in xrange(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSizePartial())
+    for i in range(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSizePartial())
     if (self.has_docs_scored_): n += 1 + self.lengthVarInt64(self.docs_scored_)
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
@@ -7416,7 +7549,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.result_)):
+    for i in range(len(self.result_)):
       out.putVarInt32(10)
       out.putVarInt32(self.result_[i].ByteSize())
       self.result_[i].OutputUnchecked(out)
@@ -7428,7 +7561,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if (self.has_cursor_):
       out.putVarInt32(34)
       out.putPrefixedString(self.cursor_)
-    for i in xrange(len(self.facet_result_)):
+    for i in range(len(self.facet_result_)):
       out.putVarInt32(42)
       out.putVarInt32(self.facet_result_[i].ByteSize())
       self.facet_result_[i].OutputUnchecked(out)
@@ -7442,7 +7575,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.result_)):
+    for i in range(len(self.result_)):
       out.putVarInt32(10)
       out.putVarInt32(self.result_[i].ByteSizePartial())
       self.result_[i].OutputPartial(out)
@@ -7456,7 +7589,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if (self.has_cursor_):
       out.putVarInt32(34)
       out.putPrefixedString(self.cursor_)
-    for i in xrange(len(self.facet_result_)):
+    for i in range(len(self.facet_result_)):
       out.putVarInt32(42)
       out.putVarInt32(self.facet_result_[i].ByteSizePartial())
       self.facet_result_[i].OutputPartial(out)
@@ -7502,7 +7635,7 @@ class SearchResponse(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -7539,7 +7672,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kresult = 1
   kmatched_count = 2

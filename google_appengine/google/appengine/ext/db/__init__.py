@@ -3968,9 +3968,9 @@ def to_dict(model_instance, dictionary=None):
       dictionary.update.  If dictionary is None, a new dictionary instance is
       created and returned.
 
-    Returns:
-      New dictionary appropriate populated with model instances values
-      if entity is None, else entity.
+  Returns:
+    New dictionary appropriate populated with model instances values
+    if entity is None, else entity.
   """
   if dictionary is None:
     dictionary = {}
@@ -3982,8 +3982,10 @@ def to_dict(model_instance, dictionary=None):
 
 
 run_in_transaction = datastore.RunInTransaction
+run_in_read_only_transaction = datastore.RunInReadOnlyTransaction
 run_in_transaction_custom_retries = datastore.RunInTransactionCustomRetries
 run_in_transaction_options = datastore.RunInTransactionOptions
+run_in_read_only_transaction_options = datastore.RunInReadOnlyTransactionOptions
 
 
 

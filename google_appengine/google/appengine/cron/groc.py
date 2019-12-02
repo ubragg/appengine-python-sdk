@@ -25,14 +25,15 @@
 
 """A wrapper around the generated Groc parser and lexer."""
 
-
+from __future__ import absolute_import
 
 import google
 
+from . import GrocLexer
+from . import GrocParser
 import antlr3
 
-import GrocLexer
-import GrocParser
+
 
 
 class GrocException(Exception):

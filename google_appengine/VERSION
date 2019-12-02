@@ -1,5 +1,5 @@
-release: "1.9.38"
-timestamp: 1462211654
+release: "1.9.87"
+timestamp: 1571856179
 api_versions: ['1']
 supported_api_versions:
   python:
@@ -7,6 +7,8 @@ supported_api_versions:
   python27:
     api_versions: ['1']
   go:
-    api_versions: ['go1']
+    api_versions: ['go1', 'go1.9']
   java7:
     api_versions: ['1.0']
+  go111:
+    api_versions: [null]

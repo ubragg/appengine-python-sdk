@@ -43,6 +43,30 @@ class _MultipleFileWatcher(object):
     """
     self._file_watchers = watchers
 
+  def set_watcher_ignore_re(self, watcher_ignore_re):
+    """Allows the file watcher to ignore a custom pattern set by the user.
+
+    Args:
+      watcher_ignore_re: A RegexObject that optionally defines a pattern for the
+          file watcher to ignore.
+    """
+    for watcher in self._file_watchers:
+      # TODO: b/33178251 - Add watcher_ignore_re  support for windows.
+      if hasattr(watcher, 'set_watcher_ignore_re'):
+        watcher.set_watcher_ignore_re(watcher_ignore_re)
+
+  def set_skip_files_re(self, skip_files_re):
+    """Allows the file watcher to respect skip_files in app.yaml.
+
+    Args:
+      skip_files_re: The skip_files field of current ModuleConfiguration,
+          defined in app.yaml.
+    """
+    for watcher in self._file_watchers:
+      # TODO: b/33178251 - Add skip_files_re support for windows.
+      if hasattr(watcher, 'set_skip_files_re'):
+        watcher.set_skip_files_re(skip_files_re)
+
   def start(self):
     for watcher in self._file_watchers:
       watcher.start()
@@ -57,8 +81,8 @@ class _MultipleFileWatcher(object):
     start() must be called before this method.
 
     Args:
-      timeout_ms: the maximum number of mulliseconds you allow this function to
-                  wait for a filesystem change.
+      timeout_ms: The maximum number of mulliseconds you allow this function to
+          wait for a filesystem change.
 
     Returns:
        An iterable of changed directories/files.
@@ -80,8 +104,8 @@ def _create_watcher(directories, watcher_class):
   there are multiple directories to watch.
 
   Args:
-    directories: an iterable of all the directories to watch.
-    watcher_class: a callable that creates the per-directory FileWatcher
+    directories: An iterable of all the directories to watch.
+    watcher_class: A callable that creates the per-directory FileWatcher
       instance. Must be callable with a single item of the type held by
       directories.
 

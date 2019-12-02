@@ -4255,6 +4255,11 @@ namespace google\appengine_datastore_v3\Error {
     const TRY_ALTERNATE_BACKEND = 10;
     const SAFE_TIME_TOO_OLD = 11;
     const RESOURCE_EXHAUSTED = 12;
+    const NOT_FOUND = 13;
+    const ALREADY_EXISTS = 14;
+    const FAILED_PRECONDITION = 15;
+    const UNAUTHENTICATED = 16;
+    const ABORTED = 17;
   }
 }
 namespace google\appengine_datastore_v3 {
@@ -5538,6 +5543,27 @@ namespace google\appengine_datastore_v3 {
     public function hasAutoIdPolicy() {
       return isset($this->auto_id_policy);
     }
+    public function getSequenceNumber() {
+      if (!isset($this->sequence_number)) {
+        return "0";
+      }
+      return $this->sequence_number;
+    }
+    public function setSequenceNumber($val) {
+      if (is_double($val)) {
+        $this->sequence_number = sprintf('%0.0F', $val);
+      } else {
+        $this->sequence_number = $val;
+      }
+      return $this;
+    }
+    public function clearSequenceNumber() {
+      unset($this->sequence_number);
+      return $this;
+    }
+    public function hasSequenceNumber() {
+      return isset($this->sequence_number);
+    }
     public function clear() {
       $this->clearEntity();
       $this->clearTransaction();
@@ -5547,6 +5573,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearMarkChanges();
       $this->clearSnapshot();
       $this->clearAutoIdPolicy();
+      $this->clearSequenceNumber();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -5581,6 +5608,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->auto_id_policy)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->auto_id_policy);
+      }
+      if (isset($this->sequence_number)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->sequence_number);
       }
       return $res;
     }
@@ -5624,6 +5655,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(80);
         $out->putVarInt32($this->auto_id_policy);
       }
+      if (isset($this->sequence_number)) {
+        $out->putVarInt32(96);
+        $out->putVarInt64($this->sequence_number);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -5664,6 +5699,9 @@ namespace google\appengine_datastore_v3 {
             break;
           case 80:
             $this->setAutoIdPolicy($d->getVarInt32());
+            break;
+          case 96:
+            $this->setSequenceNumber($d->getVarInt64());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -5712,6 +5750,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasAutoIdPolicy()) {
         $this->setAutoIdPolicy($x->getAutoIdPolicy());
       }
+      if ($x->hasSequenceNumber()) {
+        $this->setSequenceNumber($x->getSequenceNumber());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -5737,6 +5778,8 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->auto_id_policy) !== isset($x->auto_id_policy)) return false;
       if (isset($this->auto_id_policy) && $this->auto_id_policy !== $x->auto_id_policy) return false;
+      if (isset($this->sequence_number) !== isset($x->sequence_number)) return false;
+      if (isset($this->sequence_number) && !$this->integerEquals($this->sequence_number, $x->sequence_number)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -5764,6 +5807,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->auto_id_policy)) {
         $res .= $prefix . "auto_id_policy: " . ($this->auto_id_policy) . "\n";
+      }
+      if (isset($this->sequence_number)) {
+        $res .= $prefix . "sequence_number: " . $this->debugFormatInt64($this->sequence_number) . "\n";
       }
       return $res;
     }
@@ -6489,6 +6535,27 @@ namespace google\appengine_datastore_v3 {
     public function clearCompositeIndex() {
       $this->composite_index = array();
     }
+    public function getSequenceNumber() {
+      if (!isset($this->sequence_number)) {
+        return "0";
+      }
+      return $this->sequence_number;
+    }
+    public function setSequenceNumber($val) {
+      if (is_double($val)) {
+        $this->sequence_number = sprintf('%0.0F', $val);
+      } else {
+        $this->sequence_number = $val;
+      }
+      return $this;
+    }
+    public function clearSequenceNumber() {
+      unset($this->sequence_number);
+      return $this;
+    }
+    public function hasSequenceNumber() {
+      return isset($this->sequence_number);
+    }
     public function clear() {
       $this->clearTrusted();
       $this->clearTransaction();
@@ -6497,6 +6564,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearMarkChanges();
       $this->clearSnapshot();
       $this->clearCompositeIndex();
+      $this->clearSequenceNumber();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -6527,6 +6595,10 @@ namespace google\appengine_datastore_v3 {
       $res += 1 * sizeof($this->composite_index);
       foreach ($this->composite_index as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->sequence_number)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->sequence_number);
       }
       return $res;
     }
@@ -6566,6 +6638,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->sequence_number)) {
+        $out->putVarInt32(96);
+        $out->putVarInt64($this->sequence_number);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -6603,6 +6679,9 @@ namespace google\appengine_datastore_v3 {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->addCompositeIndex()->tryMerge($tmp);
+            break;
+          case 96:
+            $this->setSequenceNumber($d->getVarInt64());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -6648,6 +6727,9 @@ namespace google\appengine_datastore_v3 {
       foreach ($x->getCompositeIndexList() as $v) {
         $this->addCompositeIndex()->copyFrom($v);
       }
+      if ($x->hasSequenceNumber()) {
+        $this->setSequenceNumber($x->getSequenceNumber());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -6671,6 +6753,8 @@ namespace google\appengine_datastore_v3 {
       foreach (array_map(null, $this->composite_index, $x->composite_index) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->sequence_number) !== isset($x->sequence_number)) return false;
+      if (isset($this->sequence_number) && !$this->integerEquals($this->sequence_number, $x->sequence_number)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6695,6 +6779,9 @@ namespace google\appengine_datastore_v3 {
       }
       foreach ($this->composite_index as $value) {
         $res .= $prefix . "composite_index <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->sequence_number)) {
+        $res .= $prefix . "sequence_number: " . $this->debugFormatInt64($this->sequence_number) . "\n";
       }
       return $res;
     }
@@ -8405,6 +8492,13 @@ namespace google\appengine_datastore_v3 {
     }
   }
 }
+namespace google\appengine_datastore_v3\BeginTransactionRequest {
+  class TransactionMode {
+    const UNKNOWN = 0;
+    const READ_ONLY = 1;
+    const READ_WRITE = 2;
+  }
+}
 namespace google\appengine_datastore_v3 {
   class BeginTransactionRequest extends \google\net\ProtocolMessage {
     public function getApp() {
@@ -8458,10 +8552,51 @@ namespace google\appengine_datastore_v3 {
     public function hasDatabaseId() {
       return isset($this->database_id);
     }
+    public function getMode() {
+      if (!isset($this->mode)) {
+        return 0;
+      }
+      return $this->mode;
+    }
+    public function setMode($val) {
+      $this->mode = $val;
+      return $this;
+    }
+    public function clearMode() {
+      unset($this->mode);
+      return $this;
+    }
+    public function hasMode() {
+      return isset($this->mode);
+    }
+    public function getPreviousTransaction() {
+      if (!isset($this->previous_transaction)) {
+        return new \google\appengine_datastore_v3\Transaction();
+      }
+      return $this->previous_transaction;
+    }
+    public function mutablePreviousTransaction() {
+      if (!isset($this->previous_transaction)) {
+        $res = new \google\appengine_datastore_v3\Transaction();
+        $this->previous_transaction = $res;
+        return $res;
+      }
+      return $this->previous_transaction;
+    }
+    public function clearPreviousTransaction() {
+      if (isset($this->previous_transaction)) {
+        unset($this->previous_transaction);
+      }
+    }
+    public function hasPreviousTransaction() {
+      return isset($this->previous_transaction);
+    }
     public function clear() {
       $this->clearApp();
       $this->clearAllowMultipleEg();
       $this->clearDatabaseId();
+      $this->clearMode();
+      $this->clearPreviousTransaction();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -8475,6 +8610,14 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->database_id)) {
         $res += 1;
         $res += $this->lengthString(strlen($this->database_id));
+      }
+      if (isset($this->mode)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->mode);
+      }
+      if (isset($this->previous_transaction)) {
+        $res += 1;
+        $res += $this->lengthString($this->previous_transaction->byteSizePartial());
       }
       return $res;
     }
@@ -8490,6 +8633,15 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->database_id)) {
         $out->putVarInt32(34);
         $out->putPrefixedString($this->database_id);
+      }
+      if (isset($this->mode)) {
+        $out->putVarInt32(40);
+        $out->putVarInt32($this->mode);
+      }
+      if (isset($this->previous_transaction)) {
+        $out->putVarInt32(58);
+        $out->putVarInt32($this->previous_transaction->byteSizePartial());
+        $this->previous_transaction->outputPartial($out);
       }
     }
     public function tryMerge($d) {
@@ -8509,6 +8661,15 @@ namespace google\appengine_datastore_v3 {
             $this->setDatabaseId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
+          case 40:
+            $this->setMode($d->getVarInt32());
+            break;
+          case 58:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutablePreviousTransaction()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -8519,6 +8680,7 @@ namespace google\appengine_datastore_v3 {
     }
     public function checkInitialized() {
       if (!isset($this->app)) return 'app';
+      if (isset($this->previous_transaction) && (!$this->previous_transaction->isInitialized())) return 'previous_transaction';
       return null;
     }
     public function mergeFrom($x) {
@@ -8532,6 +8694,12 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasDatabaseId()) {
         $this->setDatabaseId($x->getDatabaseId());
       }
+      if ($x->hasMode()) {
+        $this->setMode($x->getMode());
+      }
+      if ($x->hasPreviousTransaction()) {
+        $this->mutablePreviousTransaction()->mergeFrom($x->getPreviousTransaction());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -8541,6 +8709,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->allow_multiple_eg) && $this->allow_multiple_eg !== $x->allow_multiple_eg) return false;
       if (isset($this->database_id) !== isset($x->database_id)) return false;
       if (isset($this->database_id) && $this->database_id !== $x->database_id) return false;
+      if (isset($this->mode) !== isset($x->mode)) return false;
+      if (isset($this->mode) && $this->mode !== $x->mode) return false;
+      if (isset($this->previous_transaction) !== isset($x->previous_transaction)) return false;
+      if (isset($this->previous_transaction) && !$this->previous_transaction->equals($x->previous_transaction)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -8553,6 +8725,12 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->database_id)) {
         $res .= $prefix . "database_id: " . $this->debugFormatString($this->database_id) . "\n";
+      }
+      if (isset($this->mode)) {
+        $res .= $prefix . "mode: " . ($this->mode) . "\n";
+      }
+      if (isset($this->previous_transaction)) {
+        $res .= $prefix . "previous_transaction <\n" . $this->previous_transaction->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }
@@ -8943,6 +9121,122 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->database_id)) {
         $res .= $prefix . "database_id: " . $this->debugFormatString($this->database_id) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace google\appengine_datastore_v3 {
+  class UpdateIndexResponse extends \google\net\ProtocolMessage {
+    public function getTypeUrl() {
+      if (!isset($this->type_url)) {
+        return '';
+      }
+      return $this->type_url;
+    }
+    public function setTypeUrl($val) {
+      $this->type_url = $val;
+      return $this;
+    }
+    public function clearTypeUrl() {
+      unset($this->type_url);
+      return $this;
+    }
+    public function hasTypeUrl() {
+      return isset($this->type_url);
+    }
+    public function getValue() {
+      if (!isset($this->value)) {
+        return '';
+      }
+      return $this->value;
+    }
+    public function setValue($val) {
+      $this->value = $val;
+      return $this;
+    }
+    public function clearValue() {
+      unset($this->value);
+      return $this;
+    }
+    public function hasValue() {
+      return isset($this->value);
+    }
+    public function clear() {
+      $this->clearTypeUrl();
+      $this->clearValue();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->type_url)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->type_url));
+      }
+      if (isset($this->value)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->value));
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->type_url)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->type_url);
+      }
+      if (isset($this->value)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->value);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setTypeUrl(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->setValue(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasTypeUrl()) {
+        $this->setTypeUrl($x->getTypeUrl());
+      }
+      if ($x->hasValue()) {
+        $this->setValue($x->getValue());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->type_url) !== isset($x->type_url)) return false;
+      if (isset($this->type_url) && $this->type_url !== $x->type_url) return false;
+      if (isset($this->value) !== isset($x->value)) return false;
+      if (isset($this->value) && $this->value !== $x->value) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->type_url)) {
+        $res .= $prefix . "type_url: " . $this->debugFormatString($this->type_url) . "\n";
+      }
+      if (isset($this->value)) {
+        $res .= $prefix . "value: " . $this->debugFormatString($this->value) . "\n";
       }
       return $res;
     }

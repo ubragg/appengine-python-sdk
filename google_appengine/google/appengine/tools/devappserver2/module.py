@@ -29,6 +29,7 @@ import os.path
 import random
 import re
 import string
+import thread
 import threading
 import time
 import urllib
@@ -56,6 +57,7 @@ from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import login
+from google.appengine.tools.devappserver2 import metrics
 from google.appengine.tools.devappserver2 import request_rewriter
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import runtime_factories
@@ -81,7 +83,10 @@ _RESTART_INSTANCES_CONFIG_CHANGES = frozenset(
      # appearing in static content handlers make them unavailable to the
      # runtime.
      application_configuration.HANDLERS_CHANGED,
-     application_configuration.ENV_VARIABLES_CHANGED])
+     application_configuration.ENV_VARIABLES_CHANGED,
+     application_configuration.ENTRYPOINT_ADDED,
+     application_configuration.ENTRYPOINT_CHANGED,
+     application_configuration.ENTRYPOINT_REMOVED])
 
 _REQUEST_LOGGING_BLACKLIST_RE = re.compile(
     r'^/_ah/(?:channel/(?:dev|jsapi)|img|login|upload)')
@@ -119,19 +124,10 @@ _CHANGE_POLLING_MS = 1000
 _QUIETER_RESOURCES = ('/_ah/health',)
 
 # TODO: Remove after the Files API is really gone.
-_FILESAPI_DEPRECATION_WARNING_PYTHON = (
+_FILESAPI_DEPRECATION_WARNING = (
     'The Files API is deprecated and will soon be removed. Further information'
     ' is available here: https://cloud.google.com/appengine/docs/deprecations'
     '/files_api')
-_FILESAPI_DEPRECATION_WARNING_JAVA = (
-    'The Files API is deprecated and will soon be removed. Further information'
-    ' is available here: https://cloud.google.com/appengine/docs/deprecations'
-    '/files_api')
-_FILESAPI_DEPRECATION_WARNING_GO = (
-    'The Files API is deprecated and will soon be removed. Further information'
-    ' is available here: https://cloud.google.com/appengine/docs/deprecations'
-    '/files_api')
-
 _ALLOWED_RUNTIMES_ENV_FLEX = (
     'python-compat', 'java', 'java7', 'go', 'custom')
 
@@ -213,7 +209,7 @@ class Module(object):
     runtime = module_configuration.runtime
     if runtime == 'vm':
       runtime = module_configuration.effective_runtime
-      # NOTE(bryanmau): b/24139391
+      # NOTE(user): b/24139391
       # If in env: 2, users either use a compat runtime or custom.
       if util.is_env_flex(module_configuration.env):
         if runtime not in _ALLOWED_RUNTIMES_ENV_FLEX:
@@ -234,6 +230,10 @@ class Module(object):
         runtime_config_getter=self._get_runtime_config,
         module_configuration=module_configuration)
 
+  def _is_modern(self):
+    return (
+        self._module_configuration.runtime in runtime_factories.MODERN_RUNTIMES)
+
   def _create_url_handlers(self):
     """Constructs URLHandlers based on the module configuration.
 
@@ -243,9 +243,13 @@ class Module(object):
     """
     handlers = []
     # Add special URL handlers (taking precedence over user-defined handlers)
-    url_pattern = '/%s$' % login.LOGIN_URL_RELATIVE
-    handlers.append(wsgi_handler.WSGIHandler(login.application,
-                                             url_pattern))
+
+    # Login/logout handlers.
+    handlers.append(wsgi_handler.WSGIHandler(
+        login.application, '/%s$' % login.LOGIN_URL_RELATIVE))
+    handlers.append(wsgi_handler.WSGIHandler(
+        login.application, '/%s$' % login.LOGOUT_URL_RELATIVE))
+
     url_pattern = '/%s' % blob_upload.UPLOAD_URL_PATH
     # The blobstore upload handler forwards successful requests to the
     # dispatcher.
@@ -265,18 +269,29 @@ class Module(object):
     handlers.append(
         wsgi_handler.WSGIHandler(gcs_server.Application(), url_pattern))
 
-    url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
-    handlers.append(
-        wsgi_handler.WSGIHandler(
-            endpoints.EndpointsDispatcher(self._dispatcher), url_pattern))
+    # Add a handler for Endpoints, only if version == 1.0 and /_ah/spi handler
+    # is configured.
+    runtime_config = self._get_runtime_config()
+    for library in runtime_config.libraries:
+      if library.name == 'endpoints' and library.version == '1.0':
+        if [url_map for url_map in self._module_configuration.handlers
+            if url_map.url.startswith('/_ah/spi/')]:
+          url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
+          handlers.append(
+              wsgi_handler.WSGIHandler(
+                  endpoints.EndpointsDispatcher(self._dispatcher),
+                  url_pattern))
 
     found_start_handler = False
     found_warmup_handler = False
+
     # Add user-defined URL handlers
     for url_map in self._module_configuration.handlers:
       handler_type = url_map.GetHandlerType()
       if handler_type == appinfo.HANDLER_SCRIPT:
-        handlers.append(_ScriptHandler(url_map))
+        if not self._is_modern():
+          # Handle script only for traditional runtimes.
+          handlers.append(_ScriptHandler(url_map))
         if not found_start_handler and re.match('%s$' % url_map.url,
                                                 '/_ah/start'):
           found_start_handler = True
@@ -287,12 +302,14 @@ class Module(object):
         handlers.append(
             static_files_handler.StaticFilesHandler(
                 self._module_configuration.application_root,
-                url_map))
+                url_map,
+                self._module_configuration.default_expiration))
       elif handler_type == appinfo.STATIC_DIR:
         handlers.append(
             static_files_handler.StaticDirHandler(
                 self._module_configuration.application_root,
-                url_map))
+                url_map,
+                self._module_configuration.default_expiration))
       else:
         assert 0, 'unexpected handler %r for %r' % (handler_type, url_map)
     # Add a handler for /_ah/start if no script handler matches.
@@ -303,6 +320,13 @@ class Module(object):
     if (not found_warmup_handler and
         'warmup' in (self._module_configuration.inbound_services or [])):
       handlers.insert(0, _ScriptHandler(self._instance_factory.WARMUP_URL_MAP))
+
+    if self._is_modern():
+      # Modern runtimes use default handler to route to user defined entrypoint.
+      # This handler should be checked after all other handlers.
+      default_handler = _ScriptHandler(appinfo.URLMap(url='/.*'))
+      handlers.append(default_handler)
+
     return handlers
 
   def _get_runtime_config(self):
@@ -354,6 +378,9 @@ class Module(object):
         (self._module_configuration.runtime.startswith('java') or
          self._module_configuration.effective_runtime.startswith('java'))):
       runtime_config.java_config.CopyFrom(self._java_config)
+    if (self._go_config and
+        self._module_configuration.runtime.startswith('go')):
+      runtime_config.go_config.CopyFrom(self._go_config)
 
     if self._vm_config:
       runtime_config.vm_config.CopyFrom(self._vm_config)
@@ -364,7 +391,8 @@ class Module(object):
 
     return runtime_config
 
-  def _maybe_restart_instances(self, config_changed, file_changed):
+  def _maybe_restart_instances(self, config_changed, file_changed,
+                               modern_runtime_dep_libs_changed=False):
     """Restarts instances. May avoid some restarts depending on policy.
 
     If neither config_changed or file_changed is True, returns immediately.
@@ -372,18 +400,21 @@ class Module(object):
     Args:
       config_changed: True if the configuration for the application has changed.
       file_changed: True if any file relevant to the application has changed.
+      modern_runtime_dep_libs_changed: True if dependency libraries of a modern
+        runtime(eg: python3) changed.
     """
-    if not config_changed and not file_changed:
+    policy = self._instance_factory.FILE_CHANGE_INSTANCE_RESTART_POLICY
+    assert policy is not None, 'FILE_CHANGE_INSTANCE_RESTART_POLICY not set'
+    if policy == instance.NEVER or (
+        not config_changed and not file_changed
+        and not modern_runtime_dep_libs_changed):
       return
 
     logging.debug('Restarting instances.')
-    policy = self._instance_factory.FILE_CHANGE_INSTANCE_RESTART_POLICY
-    assert policy is not None, 'FILE_CHANGE_INSTANCE_RESTART_POLICY not set'
-
     with self._condition:
       instances_to_quit = set()
       for inst in self._instances:
-        if (config_changed or
+        if (config_changed or modern_runtime_dep_libs_changed or
             (policy == instance.ALWAYS) or
             (policy == instance.AFTER_FIRST_REQUEST and inst.total_requests)):
           instances_to_quit.add(inst)
@@ -395,7 +426,8 @@ class Module(object):
   def _handle_changes(self, timeout=0):
     """Handle file or configuration changes."""
     # Check for file changes first, because they can trigger config changes.
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
+
     if file_changes:
       logging.info(
           '[%s] Detected file changes:\n  %s', self.name,
@@ -410,36 +442,51 @@ class Module(object):
       with self._handler_lock:
         self._handlers = handlers
 
+    # For python3, changes to requirements.txt should trigger instance factory
+    # reload
+    dep_libs_changed = None
+    if hasattr(self._instance_factory, 'dependency_libraries_changed'):
+      dep_libs_changed = (
+          self._instance_factory.dependency_libraries_changed(file_changes))
+
     if config_changes & _RESTART_INSTANCES_CONFIG_CHANGES:
       self._instance_factory.configuration_changed(config_changes)
 
     self._maybe_restart_instances(
         config_changed=bool(config_changes & _RESTART_INSTANCES_CONFIG_CHANGES),
-        file_changed=bool(file_changes))
+        file_changed=bool(file_changes),
+        modern_runtime_dep_libs_changed=dep_libs_changed)
 
-  def __init__(self,
-               module_configuration,
-               host,
-               balanced_port,
-               api_host,
-               api_port,
-               auth_domain,
-               runtime_stderr_loglevel,
-               php_config,
-               python_config,
-               java_config,
-               custom_config,
-               cloud_sql_config,
-               vm_config,
-               default_version_port,
-               port_registry,
-               request_data,
-               dispatcher,
-               max_instances,
-               use_mtime_file_watcher,
-               automatic_restarts,
-               allow_skipped_files,
-               threadsafe_override):
+  def __init__(
+      self,
+      module_configuration,
+      host,
+      balanced_port,
+      api_host,
+      api_port,
+      auth_domain,
+      runtime_stderr_loglevel,
+      # </scrub>
+      php_config,
+      python_config,
+      java_config,
+      go_config,
+      custom_config,
+      cloud_sql_config,
+      vm_config,
+      default_version_port,
+      port_registry,
+      request_data,
+      dispatcher,
+      max_instances,
+      use_mtime_file_watcher,
+      watcher_ignore_re,
+      automatic_restarts,
+      allow_skipped_files,
+      threadsafe_override,
+      enable_host_checking=True,
+      ssl_certificate_paths=None,
+      ssl_port=None):
     """Initializer for Module.
     Args:
       module_configuration: An application_configuration.ModuleConfiguration
@@ -461,6 +508,8 @@ class Module(object):
           Python runtime-specific configuration. If None then defaults are used.
       java_config: A runtime_config_pb2.JavaConfig instance containing
           Java runtime-specific configuration. If None then defaults are used.
+      go_config: A runtime_config_pb2.GoConfig instances containing Go
+          runtime-specific configuration. If None then defaults are used.
       custom_config: A runtime_config_pb2.CustomConfig instance. If 'runtime'
           is set then we switch to another runtime.  Otherwise, we use the
           custom_entrypoint to start the app.  If neither or both are set,
@@ -482,6 +531,8 @@ class Module(object):
       use_mtime_file_watcher: A bool containing whether to use mtime polling to
           monitor file changes even if other options are available on the
           current platform.
+      watcher_ignore_re: A regex that optionally defines a pattern for the file
+          watcher to ignore.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
       allow_skipped_files: If True then all files in the application's directory
@@ -489,7 +540,13 @@ class Module(object):
           directive.
       threadsafe_override: If not None, ignore the YAML file value of threadsafe
           and use this value instead.
-
+      enable_host_checking: A bool indicating that HTTP Host checking should
+          be enforced for incoming requests.
+      ssl_certificate_paths: A ssl_utils.SSLCertificatePaths instance. If
+          not None, the module's wsgi server will be launched with SSL. Must
+          also specify ssl_port.
+      ssl_port: An additional port to bind to for SSL connections. Must be
+          specified if ssl_certificate_paths is specified.
     Raises:
       errors.InvalidAppConfigError: For runtime: custom, either mistakenly set
         both --custom_entrypoint and --runtime or neither.
@@ -507,6 +564,7 @@ class Module(object):
     self._php_config = php_config
     self._python_config = python_config
     self._java_config = java_config
+    self._go_config = go_config
     self._custom_config = custom_config
     self._cloud_sql_config = cloud_sql_config
     self._vm_config = vm_config
@@ -517,8 +575,10 @@ class Module(object):
     self._max_instances = max_instances
     self._automatic_restarts = automatic_restarts
     self._use_mtime_file_watcher = use_mtime_file_watcher
+    self._watcher_ignore_re = watcher_ignore_re
     self._default_version_port = default_version_port
     self._port_registry = port_registry
+    self._ssl_port = ssl_port
 
     if self.effective_runtime == 'custom':
       if self._custom_config.runtime and self._custom_config.custom_entrypoint:
@@ -541,23 +601,36 @@ class Module(object):
           [self._module_configuration.application_root] +
           self._instance_factory.get_restart_directories(),
           self._use_mtime_file_watcher)
+      if hasattr(self._watcher, 'set_watcher_ignore_re'):
+        self._watcher.set_watcher_ignore_re(self._watcher_ignore_re)
+      if hasattr(self._watcher, 'set_skip_files_re'):
+        self._watcher.set_skip_files_re(self._module_configuration.skip_files)
     else:
       self._watcher = None
     self._handler_lock = threading.Lock()
     self._handlers = self._create_url_handlers()
+
+    if enable_host_checking:
+      wsgi_module = wsgi_server.WsgiHostCheck([self._host], self)
+    else:
+      wsgi_module = self
+
     self._balanced_module = wsgi_server.WsgiServer(
-        (self._host, self._balanced_port), self)
+        (self._host, self._balanced_port), wsgi_module,
+        ssl_certificate_paths, self._ssl_port)
+
     self._quit_event = threading.Event()  # Set when quit() has been called.
 
     # TODO: Remove after the Files API is really gone.
-    if self._module_configuration.runtime.startswith('python'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_PYTHON
-    elif self._module_configuration.runtime.startswith('java'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_JAVA
-    elif self._module_configuration.runtime.startswith('go'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_GO
+    if (self._module_configuration.runtime.startswith('python') or
+        self._module_configuration.runtime.startswith('java') or
+        self._module_configuration.runtime.startswith('go')):
+      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING
     else:
       self._filesapi_warning_message = None
+
+    self._total_file_change_time = 0.0
+    self._file_change_count = 0
 
   @property
   def name(self):
@@ -706,7 +779,7 @@ class Module(object):
     else:
       environ['SERVER_PORT'] = str(self.balanced_port)
     if 'HTTP_HOST' in environ:
-      environ['SERVER_NAME'] = environ['HTTP_HOST'].split(':', 1)[0]
+      environ['SERVER_NAME'] = environ['HTTP_HOST'].rsplit(':', 1)[0]
     environ['DEFAULT_VERSION_HOSTNAME'] = '%s:%s' % (
         environ['SERVER_NAME'], self._default_version_port)
 
@@ -847,6 +920,33 @@ class Module(object):
         for handler in handlers:
           match = handler.match(path_info)
           if match:
+            # Only check secure: if module was configured to run with SSL
+            if self._ssl_port:
+              handler_secure = getattr(getattr(handler, '_url_map', None),
+                                       'secure', None)
+              if (handler_secure == 'always' and
+                  environ['wsgi.url_scheme'] != 'https'):
+                # Since secure: was set to 'always', redirect to the https
+                # version of the url
+                start_response('302 Found', [('Location',
+                                              util.construct_url_from_environ(
+                                                  environ,
+                                                  secure=True,
+                                                  include_query_params=True,
+                                                  port=self._ssl_port))])
+                return []
+              elif (handler_secure == 'never' and
+                    environ['wsgi.url_scheme'] != 'http'):
+                # Since secure: was set to 'never', redirect to the http version
+                # of the url, but without the query params
+                start_response('302 Found', [('Location',
+                                              util.construct_url_from_environ(
+                                                  environ,
+                                                  secure=False,
+                                                  include_query_params=False,
+                                                  port=self._balanced_port))])
+                return []
+
             auth_failure = handler.handle_authorization(environ,
                                                         wrapped_start_response)
             if auth_failure is not None:
@@ -1034,6 +1134,17 @@ class Module(object):
     """Returns the instance with the provided instance ID."""
     raise request_info.NotSupportedWithAutoScalingError()
 
+  def report_start_metrics(self):
+    metrics.GetMetricsLogger().Log(metrics.DEVAPPSERVER_SERVICE_CATEGORY,
+                                   'ServiceStart',
+                                   label=type(self).__name__)
+
+  def report_quit_metrics(self, instance_count):
+    metrics.GetMetricsLogger().Log(metrics.DEVAPPSERVER_SERVICE_CATEGORY,
+                                   'ServiceQuit',
+                                   label=type(self).__name__,
+                                   value=instance_count)
+
   @property
   def supports_individually_addressable_instances(self):
     return False
@@ -1051,6 +1162,7 @@ class Module(object):
                                       self._php_config,
                                       self._python_config,
                                       self._java_config,
+                                      self._go_config,
                                       self._custom_config,
                                       self._cloud_sql_config,
                                       self._vm_config,
@@ -1059,6 +1171,7 @@ class Module(object):
                                       self._request_data,
                                       self._dispatcher,
                                       self._use_mtime_file_watcher,
+                                      self._watcher_ignore_re,
                                       self._allow_skipped_files,
                                       self._threadsafe_override)
     else:
@@ -1071,7 +1184,10 @@ class Module(object):
 
     url = urlparse.urlsplit(relative_url)
     if port != 80:
-      host = '%s:%s' % (self.host, port)
+      if ':' in self.host:
+        host = '[%s]:%s' % (self.host, port)
+      else:
+        host = '%s:%s' % (self.host, port)
     else:
       host = self.host
     environ = {constants.FAKE_IS_ADMIN_HEADER: '1',
@@ -1094,6 +1210,42 @@ class Module(object):
     util.put_headers_in_environ(headers, environ)
     environ['HTTP_HOST'] = host
     return environ
+
+  def _get_file_changes(self, timeout):
+    """Returns a set of paths that have changed and update metrics information.
+
+    Args:
+      timeout: Integer milliseconds on which this watcher will be allowed to
+      wait for a change.
+
+    Returns:
+      A set of string paths that have changed since the last call to this
+      function.
+    """
+    t1 = time.time()
+    res = self._watcher.changes(timeout)
+    t2 = time.time()
+
+
+
+
+
+    if res:
+      self._total_file_change_time += t2 - t1
+      self._file_change_count += 1
+    return res
+
+  def get_watcher_result(self):
+    """Returns a tuple of file watcher cumulated results for google analytics.
+
+    Returns:
+      A 3-tuple of:
+        An int representing total time spent detecting file changes in seconds.
+        An int representing total number of file change events detected.
+        The class of file watcher.
+    """
+    return (self._total_file_change_time, self._file_change_count,
+            self._watcher.__class__.__name__) if self._watcher else None
 
 
 class AutoScalingModule(Module):
@@ -1128,23 +1280,24 @@ class AutoScalingModule(Module):
       return float(timing[:-1])
 
   @classmethod
-  def _populate_default_automatic_scaling(cls, automatic_scaling):
-    for attribute in automatic_scaling.ATTRIBUTES:
-      if getattr(automatic_scaling, attribute) in ('automatic', None):
-        setattr(automatic_scaling, attribute,
+  def _populate_default_automatic_scaling(cls, automatic_scaling_config):
+    for attribute in automatic_scaling_config.ATTRIBUTES:
+      if getattr(automatic_scaling_config, attribute) in ('automatic', None):
+        setattr(automatic_scaling_config, attribute,
                 getattr(cls._DEFAULT_AUTOMATIC_SCALING, attribute))
 
-  def _process_automatic_scaling(self, automatic_scaling):
-    if automatic_scaling:
-      self._populate_default_automatic_scaling(automatic_scaling)
+  def _process_automatic_scaling(self, automatic_scaling_config):
+    """Configure min/max instances and pending latencies."""
+    if automatic_scaling_config:
+      self._populate_default_automatic_scaling(automatic_scaling_config)
     else:
-      automatic_scaling = self._DEFAULT_AUTOMATIC_SCALING
+      automatic_scaling_config = self._DEFAULT_AUTOMATIC_SCALING
     self._min_pending_latency = self._parse_pending_latency(
-        automatic_scaling.min_pending_latency)
+        automatic_scaling_config.min_pending_latency)
     self._max_pending_latency = self._parse_pending_latency(
-        automatic_scaling.max_pending_latency)
-    self._min_idle_instances = int(automatic_scaling.min_idle_instances)
-    self._max_idle_instances = int(automatic_scaling.max_idle_instances)
+        automatic_scaling_config.max_pending_latency)
+    self._min_idle_instances = int(automatic_scaling_config.min_idle_instances)
+    self._max_idle_instances = int(automatic_scaling_config.max_idle_instances)
 
   def __init__(self, **kwargs):
     """Initializer for AutoScalingModule.
@@ -1156,7 +1309,7 @@ class AutoScalingModule(Module):
     super(AutoScalingModule, self).__init__(**kwargs)
 
     self._process_automatic_scaling(
-        self._module_configuration.automatic_scaling)
+        self._module_configuration.automatic_scaling_config)
 
     self._instances = set()  # Protected by self._condition.
     # A deque containg (time, num_outstanding_instance_requests) 2-tuples.
@@ -1166,6 +1319,8 @@ class AutoScalingModule(Module):
     self._num_outstanding_instance_requests = 0  # Protected by self._condition.
     # The time when the last instance was quit in seconds since the epoch.
     self._last_instance_quit_time = 0  # Protected by self._condition.
+    # The maximum number of instances we've had in the lifetime of the module
+    self._instance_high_water_mark = 0  # Protected by self._condition
 
     self._condition = threading.Condition()  # Protects instance state.
     self._instance_adjustment_thread = threading.Thread(
@@ -1176,8 +1331,11 @@ class AutoScalingModule(Module):
     """Start background management of the Module."""
     self._balanced_module.start()
     self._port_registry.add(self.balanced_port, self, None)
+    if self._ssl_port:
+      self._port_registry.add(self._ssl_port, self, None)
     if self._watcher:
       self._watcher.start()
+    self.report_start_metrics()
     self._instance_adjustment_thread.start()
 
   def quit(self):
@@ -1191,8 +1349,10 @@ class AutoScalingModule(Module):
     self._balanced_module.quit()
     with self._condition:
       instances = self._instances
+      high_water = self._instance_high_water_mark
       self._instances = set()
       self._condition.notify_all()
+    self.report_quit_metrics(high_water)
     for inst in instances:
       inst.quit(force=True)
 
@@ -1342,6 +1502,9 @@ class AutoScalingModule(Module):
       if self._quit_event.is_set():
         return None
       self._instances.add(inst)
+      self._instance_high_water_mark = max(
+          len(self._instances),
+          self._instance_high_water_mark)
 
     if not inst.start():
       return None
@@ -1483,7 +1646,15 @@ class AutoScalingModule(Module):
           self._handle_changes(_CHANGE_POLLING_MS)
         else:
           time.sleep(_CHANGE_POLLING_MS/1000.0)
-        self._adjust_instances()
+        try:
+          self._adjust_instances()
+        except Exception as e:  # pylint: disable=broad-except
+          logging.error(e.message)
+          # thread.interrupt_main() throws a KeyboardInterrupt error in the main
+          # thread, which triggers devappserver.stop() and shuts down all other
+          # processes.
+          thread.interrupt_main()
+          break
 
   def __call__(self, environ, start_response):
     return self._handle_request(environ, start_response)
@@ -1495,18 +1666,18 @@ class ManualScalingModule(Module):
   _DEFAULT_MANUAL_SCALING = appinfo.ManualScaling(instances='1')
 
   @classmethod
-  def _populate_default_manual_scaling(cls, manual_scaling):
-    for attribute in manual_scaling.ATTRIBUTES:
-      if getattr(manual_scaling, attribute) in ('manual', None):
-        setattr(manual_scaling, attribute,
+  def _populate_default_manual_scaling(cls, manual_scaling_config):
+    for attribute in manual_scaling_config.ATTRIBUTES:
+      if getattr(manual_scaling_config, attribute) in ('manual', None):
+        setattr(manual_scaling_config, attribute,
                 getattr(cls._DEFAULT_MANUAL_SCALING, attribute))
 
-  def _process_manual_scaling(self, manual_scaling):
-    if manual_scaling:
-      self._populate_default_manual_scaling(manual_scaling)
+  def _process_manual_scaling(self, manual_scaling_config):
+    if manual_scaling_config:
+      self._populate_default_manual_scaling(manual_scaling_config)
     else:
-      manual_scaling = self._DEFAULT_MANUAL_SCALING
-    self._initial_num_instances = int(manual_scaling.instances)
+      manual_scaling_config = self._DEFAULT_MANUAL_SCALING
+    self._initial_num_instances = int(manual_scaling_config.instances)
 
   def __init__(self, **kwargs):
     """Initializer for ManualScalingModule.
@@ -1516,10 +1687,12 @@ class ManualScalingModule(Module):
     """
     super(ManualScalingModule, self).__init__(**kwargs)
 
-    self._process_manual_scaling(self._module_configuration.manual_scaling)
+    self._process_manual_scaling(
+        self._module_configuration.manual_scaling_config)
 
     self._instances = []  # Protected by self._condition.
     self._wsgi_servers = []  # Protected by self._condition.
+    self._instance_high_water_mark = 0  # Protected by self._condition
     # Whether the module has been stopped. Protected by self._condition.
     self._suspended = False
 
@@ -1536,6 +1709,8 @@ class ManualScalingModule(Module):
     """Start background management of the Module."""
     self._balanced_module.start()
     self._port_registry.add(self.balanced_port, self, None)
+    if self._ssl_port:
+      self._port_registry.add(self._ssl_port, self, None)
     if self._watcher:
       self._watcher.start()
     self._change_watcher_thread.start()
@@ -1547,6 +1722,7 @@ class ManualScalingModule(Module):
         initial_num_instances = self._initial_num_instances
       for _ in xrange(initial_num_instances):
         self._add_instance()
+    self.report_start_metrics()
 
   def quit(self):
     """Stops the Module."""
@@ -1561,8 +1737,10 @@ class ManualScalingModule(Module):
       wsgi_servr.quit()
     with self._condition:
       instances = self._instances
+      high_water = self._instance_high_water_mark
       self._instances = []
       self._condition.notify_all()
+    self.report_quit_metrics(high_water)
     for inst in instances:
       inst.quit(force=True)
 
@@ -1709,6 +1887,9 @@ class ManualScalingModule(Module):
         return
       self._wsgi_servers.append(wsgi_servr)
       self._instances.append(inst)
+      self._instance_high_water_mark = max(
+          self._instance_high_water_mark,
+          len(self._instances))
       suspended = self._suspended
     if not suspended:
       self._async_start_instance(wsgi_servr, inst)
@@ -1762,7 +1943,7 @@ class ManualScalingModule(Module):
       with self._handler_lock:
         self._handlers = handlers
 
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
     if file_changes:
       logging.info(
           '[%s] Detected file changes:\n  %s', self.name,
@@ -1967,11 +2148,14 @@ class ExternalModule(Module):
     """Start background management of the Module."""
     self._balanced_module.start()
     self._port_registry.add(self.balanced_port, self, None)
+    if self._ssl_port:
+      self._port_registry.add(self._ssl_port, self, None)
     if self._watcher:
       self._watcher.start()
     self._change_watcher_thread.start()
     with self._instance_change_lock:
       self._add_instance()
+    self.report_start_metrics()
 
   def quit(self):
     """Stops the Module."""
@@ -1983,6 +2167,7 @@ class ExternalModule(Module):
     self._change_watcher_thread.join()
     self._balanced_module.quit()
     self._wsgi_server.quit()
+    self.report_quit_metrics(1)
 
   def get_instance_port(self, instance_id):
     """Returns the port of the HTTP server for an instance."""
@@ -2284,24 +2469,25 @@ class BasicScalingModule(Module):
       return int(timing[:-1])
 
   @classmethod
-  def _populate_default_basic_scaling(cls, basic_scaling):
-    for attribute in basic_scaling.ATTRIBUTES:
-      if getattr(basic_scaling, attribute) in ('basic', None):
-        setattr(basic_scaling, attribute,
+  def _populate_default_basic_scaling(cls, basic_scaling_config):
+    for attribute in basic_scaling_config.ATTRIBUTES:
+      if getattr(basic_scaling_config, attribute) in ('basic', None):
+        setattr(basic_scaling_config, attribute,
                 getattr(cls._DEFAULT_BASIC_SCALING, attribute))
 
-  def _process_basic_scaling(self, basic_scaling):
-    if basic_scaling:
-      self._populate_default_basic_scaling(basic_scaling)
+  def _process_basic_scaling(self, basic_scaling_config):
+    """Configure _max_instances and _instance_idle_timeout."""
+    if basic_scaling_config:
+      self._populate_default_basic_scaling(basic_scaling_config)
     else:
-      basic_scaling = self._DEFAULT_BASIC_SCALING
+      basic_scaling_config = self._DEFAULT_BASIC_SCALING
     if self._max_instances is not None:
       self._max_instances = min(self._max_instances,
-                                int(basic_scaling.max_instances))
+                                int(basic_scaling_config.max_instances))
     else:
-      self._max_instances = int(basic_scaling.max_instances)
+      self._max_instances = int(basic_scaling_config.max_instances)
     self._instance_idle_timeout = self._parse_idle_timeout(
-        basic_scaling.idle_timeout)
+        basic_scaling_config.idle_timeout)
 
   def __init__(self, **kwargs):
     """Initializer for BasicScalingModule.
@@ -2311,13 +2497,13 @@ class BasicScalingModule(Module):
     """
     super(BasicScalingModule, self).__init__(**kwargs)
 
-    self._process_basic_scaling(self._module_configuration.basic_scaling)
-
+    self._process_basic_scaling(self._module_configuration.basic_scaling_config)
     self._instances = []  # Protected by self._condition.
     self._wsgi_servers = []  # Protected by self._condition.
     # A list of booleans signifying whether the corresponding instance in
     # self._instances has been or is being started.
     self._instance_running = []  # Protected by self._condition.
+    self._instance_high_water_mark = 0  # Protected by self._condition
 
     for instance_id in xrange(self._max_instances):
       inst = self._instance_factory.new_instance(instance_id,
@@ -2337,12 +2523,15 @@ class BasicScalingModule(Module):
     """Start background management of the Module."""
     self._balanced_module.start()
     self._port_registry.add(self.balanced_port, self, None)
+    if self._ssl_port:
+      self._port_registry.add(self._ssl_port, self, None)
     if self._watcher:
       self._watcher.start()
     self._change_watcher_thread.start()
     for wsgi_servr, inst in zip(self._wsgi_servers, self._instances):
       wsgi_servr.start()
       self._port_registry.add(wsgi_servr.port, self, inst)
+    self.report_start_metrics()
 
   def quit(self):
     """Stops the Module."""
@@ -2357,8 +2546,10 @@ class BasicScalingModule(Module):
       wsgi_servr.quit()
     with self._condition:
       instances = self._instances
+      high_water = self._instance_high_water_mark
       self._instances = []
       self._condition.notify_all()
+    self.report_quit_metrics(high_water)
     for inst in instances:
       inst.quit(force=True)
 
@@ -2425,6 +2616,9 @@ class BasicScalingModule(Module):
           else:
             self._instance_running[instance_id] = True
             should_start = True
+            self._instance_high_water_mark = max(
+                self._instance_high_water_mark,
+                sum(self._instance_running))
         if should_start:
           self._start_instance(instance_id)
         else:
@@ -2504,6 +2698,9 @@ class BasicScalingModule(Module):
         if not running:
           self._instance_running[instance_id] = True
           inst = self._instances[instance_id]
+          self._instance_high_water_mark = max(
+              self._instance_high_water_mark,
+              sum(self._instance_running))
           break
       else:
         return None
@@ -2565,7 +2762,7 @@ class BasicScalingModule(Module):
       with self._handler_lock:
         self._handlers = handlers
 
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
     if file_changes:
       self._instance_factory.files_changed()
 
@@ -2667,6 +2864,7 @@ class InteractiveCommandModule(Module):
                php_config,
                python_config,
                java_config,
+               go_config,
                custom_config,
                cloud_sql_config,
                vm_config,
@@ -2675,6 +2873,7 @@ class InteractiveCommandModule(Module):
                request_data,
                dispatcher,
                use_mtime_file_watcher,
+               watcher_ignore_re,
                allow_skipped_files,
                threadsafe_override):
     """Initializer for InteractiveCommandModule.
@@ -2701,6 +2900,8 @@ class InteractiveCommandModule(Module):
           Python runtime-specific configuration. If None then defaults are used.
       java_config: A runtime_config_pb2.JavaConfig instance containing
           Java runtime-specific configuration. If None then defaults are used.
+      go_config: A runtime_config_pb2.GoConfig instances containing Go
+          runtime-specific configuration. If None then defaults are used.
       custom_config: A runtime_config_pb2.CustomConfig instance. If None, or
           'custom_entrypoint' is not set, then attempting to instantiate a
           custom runtime module will result in an error.
@@ -2719,6 +2920,8 @@ class InteractiveCommandModule(Module):
       use_mtime_file_watcher: A bool containing whether to use mtime polling to
           monitor file changes even if other options are available on the
           current platform.
+      watcher_ignore_re: A regex that optionally defines a pattern for the file
+          watcher to ignore.
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
@@ -2736,6 +2939,7 @@ class InteractiveCommandModule(Module):
         php_config,
         python_config,
         java_config,
+        go_config,
         custom_config,
         cloud_sql_config,
         vm_config,
@@ -2745,6 +2949,7 @@ class InteractiveCommandModule(Module):
         dispatcher,
         max_instances=1,
         use_mtime_file_watcher=use_mtime_file_watcher,
+        watcher_ignore_re=watcher_ignore_re,
         automatic_restarts=True,
         allow_skipped_files=allow_skipped_files,
         threadsafe_override=threadsafe_override)
@@ -2763,9 +2968,12 @@ class InteractiveCommandModule(Module):
 
   def quit(self):
     """Stops the InteractiveCommandModule."""
+    instances = 0
     if self._inst:
+      instances = 1
       self._inst.quit(force=True)
       self._inst = None
+    self.report_quit_metrics(instances)
 
   def _handle_script_request(self,
                              environ,

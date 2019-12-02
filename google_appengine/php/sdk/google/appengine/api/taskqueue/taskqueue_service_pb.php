@@ -53,6 +53,7 @@ namespace google\appengine\TaskQueueServiceError {
     const TASK_LEASE_EXPIRED = 25;
     const QUEUE_PAUSED = 26;
     const INVALID_TAG = 27;
+    const INVALID_LOGGING_CONFIG = 28;
     const DATASTORE_ERROR = 10000;
   }
 }

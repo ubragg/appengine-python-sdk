@@ -20,7 +20,6 @@
 namespace dummy {
   if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
     require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
-    require_once 'google/appengine/api/api_base_pb.php';
   }
 }
 namespace google\appengine\BlobstoreServiceError {

@@ -83,15 +83,6 @@ final class CloudStorageRenameClient extends CloudStorageClient {
         $this->getHeaderValue('ETag', $http_response['headers']),
     ];
 
-    if (!ini_get('google_app_engine.enable_additional_cloud_storage_headers')) {
-      foreach (static::$METADATA_HEADERS as $key) {
-        // Leave Content-Type since it has been supported.
-        if ($key != 'Content-Type') {
-          unset($this->context_options[$key]);
-        }
-      }
-    }
-
     // Check if any metadata context options have been set and only copy values
     // below if one option needs to be changed.
     $is_meta = isset($this->context_options['metadata']);

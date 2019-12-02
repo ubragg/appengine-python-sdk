@@ -18,31 +18,19 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
 import base64
-import dummy_thread as thread
 try:
-  from google3.net.proto import _net_proto___parse__python
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+try:
+  _net_proto___parse__python = None
 except ImportError:
   _net_proto___parse__python = None
-import sys
-try:
-  __import__('google.net.rpc.python.rpc_internals_lite')
-  __import__('google.net.rpc.python.pywraprpc_lite')
-  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
-  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
-  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
-except ImportError:
-  _client_stub_base_class = object
-try:
-  __import__('google.net.rpc.python.rpcserver')
-  rpcserver = sys.modules.get('google.net.rpc.python.rpcserver')
-  _server_stub_base_class = rpcserver.BaseRpcServer
-except ImportError:
-  _server_stub_base_class = object
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -145,7 +133,7 @@ class AppIdentityServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -155,7 +143,7 @@ class AppIdentityServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -171,7 +159,7 @@ class AppIdentityServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.AppIdentityServiceError'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3JzeglFcnJvckNvZGWLAZIBB1NVQ0NFU1OYAQCMAYsBkgENVU5LTk9XTl9TQ09QRZgBCYwBiwGSAQ5CTE9CX1RPT19MQVJHRZgB6AeMAYsBkgERREVBRExJTkVfRVhDRUVERUSYAekHjAGLAZIBD05PVF9BX1ZBTElEX0FQUJgB6geMAYsBkgENVU5LTk9XTl9FUlJPUpgB6weMAYsBkgEZR0FJQU1JTlRfTk9UX0lOSVRJQUlMSVpFRJgB7AeMAYsBkgELTk9UX0FMTE9XRUSYAe0HjAGLAZIBD05PVF9JTVBMRU1FTlRFRJgB7geMAXS6AekMCjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8SCmFwcGhvc3Rpbmci5gEKF0FwcElkZW50aXR5U2VydmljZUVycm9yIsoBCglFcnJvckNvZGUSCwoHU1VDQ0VTUxAAEhEKDVVOS05PV05fU0NPUEUQCRITCg5CTE9CX1RPT19MQVJHRRDoBxIWChFERUFETElORV9FWENFRURFRBDpBxIUCg9OT1RfQV9WQUxJRF9BUFAQ6gcSEgoNVU5LTk9XTl9FUlJPUhDrBxIeChlHQUlBTUlOVF9OT1RfSU5JVElBSUxJWkVEEOwHEhAKC05PVF9BTExPV0VEEO0HEhQKD05PVF9JTVBMRU1FTlRFRBDuByIqChFTaWduRm9yQXBwUmVxdWVzdBIVCg1ieXRlc190b19zaWduGAEgASgMIj8KElNpZ25Gb3JBcHBSZXNwb25zZRIQCghrZXlfbmFtZRgBIAEoCRIXCg9zaWduYXR1cmVfYnl0ZXMYAiABKAwiIwohR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXF1ZXN0IkMKEVB1YmxpY0NlcnRpZmljYXRlEhAKCGtleV9uYW1lGAEgASgJEhwKFHg1MDlfY2VydGlmaWNhdGVfcGVtGAIgASgJIo0BCiJHZXRQdWJsaWNDZXJ0aWZpY2F0ZUZvckFwcFJlc3BvbnNlEj4KF3B1YmxpY19jZXJ0aWZpY2F0ZV9saXN0GAEgAygLMh0uYXBwaG9zdGluZy5QdWJsaWNDZXJ0aWZpY2F0ZRInCh9tYXhfY2xpZW50X2NhY2hlX3RpbWVfaW5fc2Vjb25kGAIgASgDIh4KHEdldFNlcnZpY2VBY2NvdW50TmFtZVJlcXVlc3QiPQodR2V0U2VydmljZUFjY291bnROYW1lUmVzcG9uc2USHAoUc2VydmljZV9hY2NvdW50X25hbWUYASABKAkiYAoVR2V0QWNjZXNzVG9rZW5SZXF1ZXN0Eg0KBXNjb3BlGAEgAygJEhoKEnNlcnZpY2VfYWNjb3VudF9pZBgCIAEoAxIcChRzZXJ2aWNlX2FjY291bnRfbmFtZRgDIAEoCSJHChZHZXRBY2Nlc3NUb2tlblJlc3BvbnNlEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIXCg9leHBpcmF0aW9uX3RpbWUYAiABKAMiIAoeR2V0RGVmYXVsdEdjc0J1Y2tldE5hbWVSZXF1ZXN0IkIKH0dldERlZmF1bHRHY3NCdWNrZXROYW1lUmVzcG9uc2USHwoXZGVmYXVsdF9nY3NfYnVja2V0X25hbWUYASABKAkyoAQKDlNpZ25pbmdTZXJ2aWNlEk0KClNpZ25Gb3JBcHASHS5hcHBob3N0aW5nLlNpZ25Gb3JBcHBSZXF1ZXN0Gh4uYXBwaG9zdGluZy5TaWduRm9yQXBwUmVzcG9uc2UiABJ+ChtHZXRQdWJsaWNDZXJ0aWZpY2F0ZXNGb3JBcHASLS5hcHBob3N0aW5nLkdldFB1YmxpY0NlcnRpZmljYXRlRm9yQXBwUmVxdWVzdBouLmFwcGhvc3RpbmcuR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXNwb25zZSIAEm4KFUdldFNlcnZpY2VBY2NvdW50TmFtZRIoLmFwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVxdWVzdBopLmFwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVzcG9uc2UiABJZCg5HZXRBY2Nlc3NUb2tlbhIhLmFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXF1ZXN0GiIuYXBwaG9zdGluZy5HZXRBY2Nlc3NUb2tlblJlc3BvbnNlIgASdAoXR2V0RGVmYXVsdEdjc0J1Y2tldE5hbWUSKi5hcHBob3N0aW5nLkdldERlZmF1bHRHY3NCdWNrZXROYW1lUmVxdWVzdBorLmFwcGhvc3RpbmcuR2V0RGVmYXVsdEdjc0J1Y2tldE5hbWVSZXNwb25zZSIAQkAKJGNvbS5nb29nbGUuYXBwZW5naW5lLmFwaS5hcHBpZGVudGl0eSABKAJCFEFwcElkZW50aXR5U2VydmljZVBi"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3JzeglFcnJvckNvZGWLAZIBB1NVQ0NFU1OYAQCMAYsBkgENVU5LTk9XTl9TQ09QRZgBCYwBiwGSAQ5CTE9CX1RPT19MQVJHRZgB6AeMAYsBkgERREVBRExJTkVfRVhDRUVERUSYAekHjAGLAZIBD05PVF9BX1ZBTElEX0FQUJgB6geMAYsBkgENVU5LTk9XTl9FUlJPUpgB6weMAYsBkgEZR0FJQU1JTlRfTk9UX0lOSVRJQUlMSVpFRJgB7AeMAYsBkgELTk9UX0FMTE9XRUSYAe0HjAGLAZIBD05PVF9JTVBMRU1FTlRFRJgB7geMAXS6AcgICjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8SCmFwcGhvc3Rpbmci5gEKF0FwcElkZW50aXR5U2VydmljZUVycm9yIsoBCglFcnJvckNvZGUSCwoHU1VDQ0VTUxAAEhEKDVVOS05PV05fU0NPUEUQCRITCg5CTE9CX1RPT19MQVJHRRDoBxIWChFERUFETElORV9FWENFRURFRBDpBxIUCg9OT1RfQV9WQUxJRF9BUFAQ6gcSEgoNVU5LTk9XTl9FUlJPUhDrBxIeChlHQUlBTUlOVF9OT1RfSU5JVElBSUxJWkVEEOwHEhAKC05PVF9BTExPV0VEEO0HEhQKD05PVF9JTVBMRU1FTlRFRBDuByIqChFTaWduRm9yQXBwUmVxdWVzdBIVCg1ieXRlc190b19zaWduGAEgASgMIj8KElNpZ25Gb3JBcHBSZXNwb25zZRIQCghrZXlfbmFtZRgBIAEoCRIXCg9zaWduYXR1cmVfYnl0ZXMYAiABKAwiIwohR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXF1ZXN0IkMKEVB1YmxpY0NlcnRpZmljYXRlEhAKCGtleV9uYW1lGAEgASgJEhwKFHg1MDlfY2VydGlmaWNhdGVfcGVtGAIgASgJIo0BCiJHZXRQdWJsaWNDZXJ0aWZpY2F0ZUZvckFwcFJlc3BvbnNlEj4KF3B1YmxpY19jZXJ0aWZpY2F0ZV9saXN0GAEgAygLMh0uYXBwaG9zdGluZy5QdWJsaWNDZXJ0aWZpY2F0ZRInCh9tYXhfY2xpZW50X2NhY2hlX3RpbWVfaW5fc2Vjb25kGAIgASgDIh4KHEdldFNlcnZpY2VBY2NvdW50TmFtZVJlcXVlc3QiPQodR2V0U2VydmljZUFjY291bnROYW1lUmVzcG9uc2USHAoUc2VydmljZV9hY2NvdW50X25hbWUYASABKAkiZAoVR2V0QWNjZXNzVG9rZW5SZXF1ZXN0Eg0KBXNjb3BlGAEgAygJEhoKEnNlcnZpY2VfYWNjb3VudF9pZBgCIAEoAxIgChRzZXJ2aWNlX2FjY291bnRfbmFtZRgDIAEoCUICGAEiRwoWR2V0QWNjZXNzVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFwoPZXhwaXJhdGlvbl90aW1lGAIgASgDIiAKHkdldERlZmF1bHRHY3NCdWNrZXROYW1lUmVxdWVzdCJCCh9HZXREZWZhdWx0R2NzQnVja2V0TmFtZVJlc3BvbnNlEh8KF2RlZmF1bHRfZ2NzX2J1Y2tldF9uYW1lGAEgASgJQj4KJGNvbS5nb29nbGUuYXBwZW5naW5lLmFwaS5hcHBpZGVudGl0eSgCQhRBcHBJZGVudGl0eVNlcnZpY2VQYg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -269,7 +257,7 @@ class SignForAppRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -280,7 +268,7 @@ class SignForAppRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kbytes_to_sign = 1
 
@@ -427,7 +415,7 @@ class SignForAppResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -439,7 +427,7 @@ class SignForAppResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey_name = 1
   ksignature_bytes = 2
@@ -533,7 +521,7 @@ class GetPublicCertificateForAppRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -543,7 +531,7 @@ class GetPublicCertificateForAppRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -687,7 +675,7 @@ class PublicCertificate(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -699,7 +687,7 @@ class PublicCertificate(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey_name = 1
   kx509_certificate_pem = 2
@@ -766,7 +754,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.public_certificate_list_size()): self.add_public_certificate_list().CopyFrom(x.public_certificate_list(i))
+    for i in range(x.public_certificate_list_size()): self.add_public_certificate_list().CopyFrom(x.public_certificate_list(i))
     if (x.has_max_client_cache_time_in_second()): self.set_max_client_cache_time_in_second(x.max_client_cache_time_in_second())
 
   if _net_proto___parse__python is not None:
@@ -814,14 +802,14 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.public_certificate_list_)
-    for i in xrange(len(self.public_certificate_list_)): n += self.lengthString(self.public_certificate_list_[i].ByteSize())
+    for i in range(len(self.public_certificate_list_)): n += self.lengthString(self.public_certificate_list_[i].ByteSize())
     if (self.has_max_client_cache_time_in_second_): n += 1 + self.lengthVarInt64(self.max_client_cache_time_in_second_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.public_certificate_list_)
-    for i in xrange(len(self.public_certificate_list_)): n += self.lengthString(self.public_certificate_list_[i].ByteSizePartial())
+    for i in range(len(self.public_certificate_list_)): n += self.lengthString(self.public_certificate_list_[i].ByteSizePartial())
     if (self.has_max_client_cache_time_in_second_): n += 1 + self.lengthVarInt64(self.max_client_cache_time_in_second_)
     return n
 
@@ -830,7 +818,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_max_client_cache_time_in_second()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.public_certificate_list_)):
+    for i in range(len(self.public_certificate_list_)):
       out.putVarInt32(10)
       out.putVarInt32(self.public_certificate_list_[i].ByteSize())
       self.public_certificate_list_[i].OutputUnchecked(out)
@@ -839,7 +827,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt64(self.max_client_cache_time_in_second_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.public_certificate_list_)):
+    for i in range(len(self.public_certificate_list_)):
       out.putVarInt32(10)
       out.putVarInt32(self.public_certificate_list_[i].ByteSizePartial())
       self.public_certificate_list_[i].OutputPartial(out)
@@ -861,7 +849,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -880,7 +868,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpublic_certificate_list = 1
   kmax_client_cache_time_in_second = 2
@@ -974,7 +962,7 @@ class GetServiceAccountNameRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -984,7 +972,7 @@ class GetServiceAccountNameRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -1098,7 +1086,7 @@ class GetServiceAccountNameResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1109,7 +1097,7 @@ class GetServiceAccountNameResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kservice_account_name = 1
 
@@ -1187,7 +1175,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.scope_size()): self.add_scope(x.scope(i))
+    for i in range(x.scope_size()): self.add_scope(x.scope(i))
     if (x.has_service_account_id()): self.set_service_account_id(x.service_account_id())
     if (x.has_service_account_name()): self.set_service_account_name(x.service_account_name())
 
@@ -1236,7 +1224,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.scope_)
-    for i in xrange(len(self.scope_)): n += self.lengthString(len(self.scope_[i]))
+    for i in range(len(self.scope_)): n += self.lengthString(len(self.scope_[i]))
     if (self.has_service_account_id_): n += 1 + self.lengthVarInt64(self.service_account_id_)
     if (self.has_service_account_name_): n += 1 + self.lengthString(len(self.service_account_name_))
     return n
@@ -1244,7 +1232,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.scope_)
-    for i in xrange(len(self.scope_)): n += self.lengthString(len(self.scope_[i]))
+    for i in range(len(self.scope_)): n += self.lengthString(len(self.scope_[i]))
     if (self.has_service_account_id_): n += 1 + self.lengthVarInt64(self.service_account_id_)
     if (self.has_service_account_name_): n += 1 + self.lengthString(len(self.service_account_name_))
     return n
@@ -1255,7 +1243,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_service_account_name()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.scope_)):
+    for i in range(len(self.scope_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.scope_[i])
     if (self.has_service_account_id_):
@@ -1266,7 +1254,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.service_account_name_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.scope_)):
+    for i in range(len(self.scope_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.scope_[i])
     if (self.has_service_account_id_):
@@ -1290,7 +1278,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1308,7 +1296,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kscope = 1
   kservice_account_id = 2
@@ -1333,7 +1321,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetAccessTokenRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXF1ZXN0ExoFc2NvcGUgASgCMAk4AxQTGhJzZXJ2aWNlX2FjY291bnRfaWQgAigAMAM4ARQTGhRzZXJ2aWNlX2FjY291bnRfbmFtZSADKAIwCTgBFMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXF1ZXN0ExoFc2NvcGUgASgCMAk4AxQTGhJzZXJ2aWNlX2FjY291bnRfaWQgAigAMAM4ARQTGhRzZXJ2aWNlX2FjY291bnRfbmFtZSADKAIwCTgB0AEBFMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -1461,7 +1449,7 @@ class GetAccessTokenResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1473,7 +1461,7 @@ class GetAccessTokenResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kaccess_token = 1
   kexpiration_time = 2
@@ -1567,7 +1555,7 @@ class GetDefaultGcsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1577,7 +1565,7 @@ class GetDefaultGcsBucketNameRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -1691,7 +1679,7 @@ class GetDefaultGcsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1702,7 +1690,7 @@ class GetDefaultGcsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdefault_gcs_bucket_name = 1
 
@@ -1726,351 +1714,7 @@ class GetDefaultGcsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
 
-
-
-class _SigningService_ClientBaseStub(_client_stub_base_class):
-  """Makes Stubby RPC calls to a SigningService server."""
-
-  __slots__ = (
-      '_protorpc_SignForApp', '_full_name_SignForApp',
-      '_protorpc_GetPublicCertificatesForApp', '_full_name_GetPublicCertificatesForApp',
-      '_protorpc_GetServiceAccountName', '_full_name_GetServiceAccountName',
-      '_protorpc_GetAccessToken', '_full_name_GetAccessToken',
-      '_protorpc_GetDefaultGcsBucketName', '_full_name_GetDefaultGcsBucketName',
-  )
-
-  def __init__(self, rpc_stub):
-    self._stub = rpc_stub
-
-    self._protorpc_SignForApp = pywraprpc.RPC()
-    self._full_name_SignForApp = self._stub.GetFullMethodName(
-        'SignForApp')
-
-    self._protorpc_GetPublicCertificatesForApp = pywraprpc.RPC()
-    self._full_name_GetPublicCertificatesForApp = self._stub.GetFullMethodName(
-        'GetPublicCertificatesForApp')
-
-    self._protorpc_GetServiceAccountName = pywraprpc.RPC()
-    self._full_name_GetServiceAccountName = self._stub.GetFullMethodName(
-        'GetServiceAccountName')
-
-    self._protorpc_GetAccessToken = pywraprpc.RPC()
-    self._full_name_GetAccessToken = self._stub.GetFullMethodName(
-        'GetAccessToken')
-
-    self._protorpc_GetDefaultGcsBucketName = pywraprpc.RPC()
-    self._full_name_GetDefaultGcsBucketName = self._stub.GetFullMethodName(
-        'GetDefaultGcsBucketName')
-
-  def SignForApp(self, request, rpc=None, callback=None, response=None):
-    """Make a SignForApp RPC call.
-
-    Args:
-      request: a SignForAppRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The SignForAppResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = SignForAppResponse
-    return self._MakeCall(rpc,
-                          self._full_name_SignForApp,
-                          'SignForApp',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_SignForApp,
-                          package_name='apphosting')
-
-  def GetPublicCertificatesForApp(self, request, rpc=None, callback=None, response=None):
-    """Make a GetPublicCertificatesForApp RPC call.
-
-    Args:
-      request: a GetPublicCertificateForAppRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The GetPublicCertificateForAppResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = GetPublicCertificateForAppResponse
-    return self._MakeCall(rpc,
-                          self._full_name_GetPublicCertificatesForApp,
-                          'GetPublicCertificatesForApp',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_GetPublicCertificatesForApp,
-                          package_name='apphosting')
-
-  def GetServiceAccountName(self, request, rpc=None, callback=None, response=None):
-    """Make a GetServiceAccountName RPC call.
-
-    Args:
-      request: a GetServiceAccountNameRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The GetServiceAccountNameResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = GetServiceAccountNameResponse
-    return self._MakeCall(rpc,
-                          self._full_name_GetServiceAccountName,
-                          'GetServiceAccountName',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_GetServiceAccountName,
-                          package_name='apphosting')
-
-  def GetAccessToken(self, request, rpc=None, callback=None, response=None):
-    """Make a GetAccessToken RPC call.
-
-    Args:
-      request: a GetAccessTokenRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The GetAccessTokenResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = GetAccessTokenResponse
-    return self._MakeCall(rpc,
-                          self._full_name_GetAccessToken,
-                          'GetAccessToken',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_GetAccessToken,
-                          package_name='apphosting')
-
-  def GetDefaultGcsBucketName(self, request, rpc=None, callback=None, response=None):
-    """Make a GetDefaultGcsBucketName RPC call.
-
-    Args:
-      request: a GetDefaultGcsBucketNameRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The GetDefaultGcsBucketNameResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = GetDefaultGcsBucketNameResponse
-    return self._MakeCall(rpc,
-                          self._full_name_GetDefaultGcsBucketName,
-                          'GetDefaultGcsBucketName',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_GetDefaultGcsBucketName,
-                          package_name='apphosting')
-
-
-class _SigningService_ClientStub(_SigningService_ClientBaseStub):
-  __slots__ = ('_params',)
-  def __init__(self, rpc_stub_parameters, service_name):
-    if service_name is None:
-      service_name = 'SigningService'
-    _SigningService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, rpc_stub_parameters))
-    self._params = rpc_stub_parameters
-
-
-class _SigningService_RPC2ClientStub(_SigningService_ClientBaseStub):
-  __slots__ = ()
-  def __init__(self, server, channel, service_name):
-    if service_name is None:
-      service_name = 'SigningService'
-    if channel is not None:
-      if channel.version() == 1:
-        raise RuntimeError('Expecting an RPC2 channel to create the stub')
-      _SigningService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, channel))
-    elif server is not None:
-      _SigningService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, pywraprpc.NewClientChannel(server)))
-    else:
-      raise RuntimeError('Invalid argument combination to create a stub')
-
-
-class SigningService(_server_stub_base_class):
-  """Base class for SigningService Stubby servers."""
-
-  @classmethod
-  def _MethodSignatures(cls):
-    """Returns a dict of {<method-name>: (<request-type>, <response-type>)}."""
-    return {
-      'SignForApp': (SignForAppRequest, SignForAppResponse),
-      'GetPublicCertificatesForApp': (GetPublicCertificateForAppRequest, GetPublicCertificateForAppResponse),
-      'GetServiceAccountName': (GetServiceAccountNameRequest, GetServiceAccountNameResponse),
-      'GetAccessToken': (GetAccessTokenRequest, GetAccessTokenResponse),
-      'GetDefaultGcsBucketName': (GetDefaultGcsBucketNameRequest, GetDefaultGcsBucketNameResponse),
-      }
-
-  @classmethod
-  def _StreamMethodSignatures(cls):
-    """Returns a dict of {<method-name>: (<request-type>, <stream-type>, <response-type>)}."""
-    return {
-      }
-
-  def __init__(self, *args, **kwargs):
-    """Creates a Stubby RPC server.
-
-    The arguments to this constructor are the same as the arguments to
-    BaseRpcServer.__init__ in rpcserver.py *MINUS* export_name. This
-    constructor passes its own value for export_name to
-    BaseRpcServer.__init__, so callers of this constructor should only
-    pass to this constructor values corresponding to
-    BaseRpcServer.__init__'s remaining arguments.
-    """
-    if _server_stub_base_class is object:
-      raise NotImplementedError('Add //net/rpc/python:rpcserver as a '
-                                'dependency for Stubby server support.')
-    _server_stub_base_class.__init__(self, 'apphosting.SigningService', *args, **kwargs)
-
-  @staticmethod
-  def NewStub(rpc_stub_parameters, service_name=None):
-    """Creates a new SigningService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-    """
-
-    if _client_stub_base_class is object:
-      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
-    return _SigningService_ClientStub(rpc_stub_parameters, service_name)
-
-  @staticmethod
-  def NewRPC2Stub(server=None, channel=None, service_name=None):
-    """Creates a new SigningService Stubby2 client stub.
-
-    Args:
-      server: host:port or bns address.
-      channel: directly use a channel to create a stub. Will ignore server
-          argument if this is specified.
-      service_name: the service name used by the Stubby server.
-    """
-
-    if _client_stub_base_class is object:
-      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
-    return _SigningService_RPC2ClientStub(server, channel, service_name)
-
-  def SignForApp(self, rpc, request, response):
-    """Handles a SignForApp RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a SignForAppRequest that contains the client request
-      response: a SignForAppResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-
-  def GetPublicCertificatesForApp(self, rpc, request, response):
-    """Handles a GetPublicCertificatesForApp RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a GetPublicCertificateForAppRequest that contains the client request
-      response: a GetPublicCertificateForAppResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-
-  def GetServiceAccountName(self, rpc, request, response):
-    """Handles a GetServiceAccountName RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a GetServiceAccountNameRequest that contains the client request
-      response: a GetServiceAccountNameResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-
-  def GetAccessToken(self, rpc, request, response):
-    """Handles a GetAccessToken RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a GetAccessTokenRequest that contains the client request
-      response: a GetAccessTokenResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-
-  def GetDefaultGcsBucketName(self, rpc, request, response):
-    """Handles a GetDefaultGcsBucketName RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a GetDefaultGcsBucketNameRequest that contains the client request
-      response: a GetDefaultGcsBucketNameResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-  def _AddMethodAttributes(self):
-    """Sets attributes on Python RPC handlers.
-
-    See BaseRpcServer in rpcserver.py for details.
-    """
-    rpcserver._GetHandlerDecorator(
-        getattr(self.SignForApp, '__func__'),
-        SignForAppRequest,
-        SignForAppResponse,
-        None,
-        'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.GetPublicCertificatesForApp, '__func__'),
-        GetPublicCertificateForAppRequest,
-        GetPublicCertificateForAppResponse,
-        None,
-        'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.GetServiceAccountName, '__func__'),
-        GetServiceAccountNameRequest,
-        GetServiceAccountNameResponse,
-        None,
-        'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.GetAccessToken, '__func__'),
-        GetAccessTokenRequest,
-        GetAccessTokenResponse,
-        None,
-        'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.GetDefaultGcsBucketName, '__func__'),
-        GetDefaultGcsBucketNameRequest,
-        GetDefaultGcsBucketNameResponse,
-        None,
-        'INTEGRITY')
-
 if _extension_runtime:
   pass
 
-__all__ = ['AppIdentityServiceError','SignForAppRequest','SignForAppResponse','GetPublicCertificateForAppRequest','PublicCertificate','GetPublicCertificateForAppResponse','GetServiceAccountNameRequest','GetServiceAccountNameResponse','GetAccessTokenRequest','GetAccessTokenResponse','GetDefaultGcsBucketNameRequest','GetDefaultGcsBucketNameResponse','SigningService']
+__all__ = ['AppIdentityServiceError','SignForAppRequest','SignForAppResponse','GetPublicCertificateForAppRequest','PublicCertificate','GetPublicCertificateForAppResponse','GetServiceAccountNameRequest','GetServiceAccountNameResponse','GetAccessTokenRequest','GetAccessTokenResponse','GetDefaultGcsBucketNameRequest','GetDefaultGcsBucketNameResponse']

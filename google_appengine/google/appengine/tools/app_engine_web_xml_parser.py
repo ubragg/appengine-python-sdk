@@ -95,7 +95,7 @@ class AppEngineWebXmlParser(object):
     element_name = xml_parser_utils.GetTag(child_node)
     camel_case_name = ''.join(part.title() for part in element_name.split('-'))
     method_name = 'Process%sNode' % camel_case_name
-    if hasattr(self, method_name) and method_name is not 'ProcessChildNode':
+    if hasattr(self, method_name) and method_name != 'ProcessChildNode':
       getattr(self, method_name)(child_node)
     else:
       self.errors.append('Second-level tag not recognized: <%s>' % element_name)
@@ -130,8 +130,8 @@ class AppEngineWebXmlParser(object):
   def ProcessVersionNode(self, node):
     self.app_engine_web_xml.version_id = node.text
 
-  def ProcessSourceLanguageNode(self, node):
-    self.app_engine_web_xml.source_language = node.text
+  def ProcessRuntimeNode(self, node):
+    self.app_engine_web_xml.runtime = node.text
 
   def ProcessModuleNode(self, node):
     self.app_engine_web_xml.module = node.text
@@ -141,6 +141,13 @@ class AppEngineWebXmlParser(object):
 
   def ProcessInstanceClassNode(self, node):
     self.app_engine_web_xml.instance_class = node.text
+
+  def ProcessVpcAccessConnectorNode(self, node):
+    """Sets vpc access connector settings."""
+    vpc_access_connector = VpcAccessConnector()
+    vpc_access_connector.name = xml_parser_utils.GetChildNodeText(
+        node, 'name').strip()
+    self.app_engine_web_xml.vpc_access_connector = vpc_access_connector
 
   def ProcessAutomaticScalingNode(self, node):
     """Sets automatic scaling settings."""
@@ -291,6 +298,12 @@ class AppEngineWebXmlParser(object):
   def ProcessEnvNode(self, node):
     self.app_engine_web_xml.env = node.text
 
+  def ProcessEntrypointNode(self, node):
+    self.app_engine_web_xml.entrypoint = node.text
+
+  def ProcessRuntimeChannelNode(self, node):
+    self.app_engine_web_xml.runtime_channel = node.text
+
   def ProcessApiConfigNode(self, node):
     servlet = xml_parser_utils.GetAttribute(node, 'servlet-class').strip()
     url = xml_parser_utils.GetAttribute(node, 'url-pattern').strip()
@@ -375,6 +388,49 @@ class AppEngineWebXmlParser(object):
             'unrecognized element within <health-check>: <%s>' % tag)
     self.app_engine_web_xml.health_check = health_check
 
+  def ProcessLivenessCheckNode(self, node):
+    """Processing a liveness check node."""
+    liveness_check = LivenessCheck()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      if tag in ('host', 'path'):
+        setattr(liveness_check, tag, child.text)
+      elif tag in ('check-interval-sec', 'success-threshold',
+                   'initial-delay-sec', 'timeout-sec', 'failure-threshold'):
+        text = child.text or ''
+        try:
+          value = self._PositiveInt(text)
+          setattr(liveness_check, tag.replace('-', '_'), value)
+        except ValueError:
+          self.errors.append('value for %s must be a positive integer: "%s"' %
+                             (tag, text))
+      else:
+        self.errors.append(
+            'unrecognized element within <liveness-check>: <%s>' % tag)
+    self.app_engine_web_xml.liveness_check = liveness_check
+
+  def ProcessReadinessCheckNode(self, node):
+    """Processing a readiness check node."""
+    readiness_check = ReadinessCheck()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      if tag in ('host', 'path'):
+        setattr(readiness_check, tag, child.text)
+      elif tag in ('check-interval-sec', 'success-threshold',
+                   'initial-delay-sec', 'timeout-sec', 'failure-threshold',
+                   'app-start-timeout-sec'):
+        text = child.text or ''
+        try:
+          value = self._PositiveInt(text)
+          setattr(readiness_check, tag.replace('-', '_'), value)
+        except ValueError:
+          self.errors.append('value for %s must be a positive integer: "%s"' %
+                             (tag, text))
+      else:
+        self.errors.append(
+            'unrecognized element within <readiness-check>: <%s>' % tag)
+    self.app_engine_web_xml.readiness_check = readiness_check
+
   def ProcessVmHealthCheckNode(self, node):
     self.ProcessHealthCheckNode(node)
 
@@ -405,6 +461,22 @@ class AppEngineWebXmlParser(object):
         self.errors.append(
             'unrecognized element within <network>: <%s>' % tag)
     self.app_engine_web_xml.network = network
+
+  def ProcessStagingNode(self, node):
+    """Process the local staging config node."""
+    staging = Staging()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      text = child.text or ''
+      if tag in ('jar-splitting-excludes', 'compile-encoding'):
+        setattr(staging, tag.replace('-', '_'), text)
+      elif tag in ('enable-jar-splitting', 'disable-jar-jsps',
+                   'enable-jar-classes', 'delete-jsps'):
+        value = xml_parser_utils.BooleanValue(text)
+        setattr(staging, tag.replace('-', '_'), value)
+      else:
+        self.errors.append('unrecognized element within <staging>: <%s>' % tag)
+    self.app_engine_web_xml.staging = staging
 
   def CheckScalingConstraints(self):
     """Checks that at most one type of scaling is enabled."""
@@ -448,17 +520,21 @@ class AppEngineWebXml(ValueMixin):
     """Initializes an empty AppEngineWebXml object."""
     self.app_id = None
     self.version_id = None
-    self.source_language = None
+    self.runtime = None
     self.module = None
     self.service = None
     self.system_properties = {}
     self.beta_settings = {}
     self.vm_settings = {}
     self.health_check = None
+    self.liveness_check = None
+    self.readiness_check = None
     self.resources = None
     self.network = None
+    self.staging = None
     self.env_variables = {}
     self.instance_class = None
+    self.vpc_access_connector = None
     self.automatic_scaling = None
     self.manual_scaling = None
     self.basic_scaling = None
@@ -612,6 +688,11 @@ class AutomaticScaling(ValueMixin):
   pass
 
 
+class VpcAccessConnector(ValueMixin):
+  """Instances contain information about vpc access connector settings."""
+  pass
+
+
 class ManualScaling(ValueMixin):
   """Instances contain information about manual scaling settings."""
   pass
@@ -661,6 +742,16 @@ class HealthCheck(ValueMixin):
   pass
 
 
+class LivenessCheck(ValueMixin):
+  """Instances contain information about liveness check settings."""
+  pass
+
+
+class ReadinessCheck(ValueMixin):
+  """Instances contain information about readiness check settings."""
+  pass
+
+
 class Resources(ValueMixin):
   """Instances contain information about resources settings."""
   pass
@@ -673,3 +764,7 @@ class BetaSettings(ValueMixin):
 
 class Network(ValueMixin):
   """Instances contain information about network settings."""
+
+
+class Staging(ValueMixin):
+  """Instances contain information about local staging settings."""

@@ -60,7 +60,7 @@ def dispatch(method, headers, url, payload):
   exepected format for the request.
 
   Args:
-    method: A string represneting the HTTP request method.
+    method: A string representing the HTTP request method.
     headers: A dict mapping HTTP header names to values.
     url: A string representing the request URL in the form of
         http://<host>/_ah/gcs/<bucket>/<object>.
@@ -187,7 +187,7 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
                                    payload,
                                    content_range.range,
                                    content_range.length)
-  except ValueError, e:
+  except ValueError as e:
     return _FakeUrlFetchResult(e.args[1], {}, e.args[0])
 
   if content_range.length is not None:
@@ -462,7 +462,9 @@ class _ContentRange(_Header):
 class _Range(_Header):
   """_Range header.
 
-  Used by read. Format: Range: bytes=1-3.
+  Used by read. Formats:
+  Range: bytes=1-3
+  Range: bytes=1-
   """
 
   HEADER = 'Range'
@@ -471,7 +473,7 @@ class _Range(_Header):
     super(_Range, self).__init__(headers)
     if self.value:
       start, end = self.value.rsplit('=', 1)[-1].split('-')
-      start, end = long(start), long(end)
+      start, end = long(start), long(end) if end else None
     else:
       start, end = 0, None
     self.value = start, end

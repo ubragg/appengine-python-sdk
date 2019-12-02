@@ -125,11 +125,14 @@ class InotifyFileWatcher(object):
     """
     assert _libc is not None, 'InotifyFileWatcher only available on Linux.'
     self._directories = [os.path.abspath(d) for d in directories]
+    # os.path.realpath() resolves symlinks while os.path.abspath() doesn't.
     self._real_directories = [os.path.realpath(d) for d in self._directories]
     self._watch_to_directory = {}
     self._directory_to_watch_descriptor = {}
     self._directory_to_subdirs = {}
     self._inotify_events = ''
+    self._skip_files_re = None
+    self._watcher_ignore_re = None
     self._inotify_fd = _libc.inotify_init()
     if self._inotify_fd < 0:
       error = OSError('failed call to inotify_init')
@@ -173,7 +176,11 @@ class InotifyFileWatcher(object):
     for dirpath, directories, _ in itertools.chain(
         [(os.path.dirname(path), [os.path.basename(path)], None)],
         os.walk(path, topdown=True, followlinks=True)):
-      watcher_common.skip_ignored_dirs(directories)
+      skip_files_re = dirpath in self._directories and self._skip_files_re
+      watcher_common.skip_ignored_dirs(dirpath, directories,
+                                       self._watcher_ignore_re)
+      watcher_common.skip_ignored_dirs(dirpath, directories, skip_files_re)
+
       # TODO: this is not an ideal solution as there are other ways for
       # symlinks to confuse our algorithm but a general solution is going to
       # be very complex and this is good enough to solve the immediate problem
@@ -210,6 +217,24 @@ class InotifyFileWatcher(object):
         self._directory_to_watch_descriptor[directory_path] = watch_descriptor
         self._directory_to_subdirs[directory_path] = set()
 
+  def set_watcher_ignore_re(self, watcher_ignore_re):
+    """Allows the file watcher to ignore a custom pattern set by the user.
+
+    Args:
+      watcher_ignore_re: A RegexObject that optionally defines a pattern for the
+          file watcher to ignore.
+    """
+    self._watcher_ignore_re = watcher_ignore_re
+
+  def set_skip_files_re(self, skip_files_re):
+    """Allows the file watcher to respect skip_files in app.yaml.
+
+    Args:
+      skip_files_re: The skip_files field of current ModuleConfiguration,
+          defined in app.yaml.
+    """
+    self._skip_files_re = skip_files_re
+
   def start(self):
     """Start watching the directory for changes."""
     with self._inotify_fd_lock:
@@ -231,10 +256,10 @@ class InotifyFileWatcher(object):
     start() must be called before this method.
 
     Args:
-      timeout_ms: a timeout in milliseconds on which this watcher will block
-                  waiting for a change. It allows for external polling threads
-                  to react immediately on a change instead of waiting for
-                  a random polling delay.
+      timeout_ms: A timeout in milliseconds on which this watcher will block
+          waiting for a change. It allows for external polling threads
+          to react immediately on a change instead of waiting for
+          a random polling delay.
 
     Returns:
       A set of strings representing file and directory paths that have changed
@@ -286,6 +311,9 @@ class InotifyFileWatcher(object):
               self._add_watch_for_path(path)
             elif mask & IN_MOVED_TO:
               self._add_watch_for_path(path)
-          if path not in paths and not watcher_common.ignore_file(path):
+          if path not in paths and (
+              not watcher_common.ignore_file(
+                  path, self._skip_files_re, self._watcher_ignore_re)):
             paths.add(path)
+
     return paths

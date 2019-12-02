@@ -14,16 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
 """Convenience wrapper for starting an appengine tool."""
 
 
 
 import os
 import sys
-import time
+
+
+
 
 sys_path = sys.path
 try:
@@ -34,77 +33,46 @@ try:
 finally:
   sys.path = sys_path
 
-wrapper_util.reject_old_python_versions((2, 5))
-if sys.version_info < (2, 6):
-  sys.stderr.write(
-      'WARNING: In an upcoming release the SDK will no longer support Python'
-      ' 2.5. Users should upgrade to Python 2.6 or higher.\n')
-  time.sleep(1)
+wrapper_util.reject_old_python_versions((2, 7))
+
+_DIR_PATH = wrapper_util.get_dir_path(__file__, os.path.join('lib', 'ipaddr'))
+_PATHS = wrapper_util.Paths(_DIR_PATH)
 
 
 
 
-def get_dir_path(sibling):
-  """Get a path to the directory of this script.
 
-  By default, the canonical path (symlinks resolved) will be returned. In some
-  environments the canonical directory is not sufficient because different
-  parts of the SDK are referenced by symlinks, including this very module's
-  file. In this case, the non-canonical path to this file's directory will be
-  returned (i.e., the directory where the symlink lives, not the directory
-  where it points).
+EXTRA_PATHS = _PATHS.v2_extra_paths
 
-  Args:
-    sibling: Relative path to a sibling of this module file. Choose a sibling
-    that is potentially symlinked into the parent directory.
 
-  Returns:
-    A directory name.
+def fix_google_path():
 
-  Raises:
-    ValueError: If no proper path could be determined.
-  """
-  return wrapper_util.get_dir_path(__file__, sibling)
+
+  if 'google' in sys.modules:
+    google_path = os.path.join(os.path.dirname(__file__), 'google')
+    google_module = sys.modules['google']
+    google_module.__path__.append(google_path)
 
 
 
 
 
 
-
-
-
-
-
-
-
-DIR_PATH = get_dir_path(os.path.join('lib', 'ipaddr'))
-_PATHS = wrapper_util.Paths(DIR_PATH)
-
-SCRIPT_DIR = _PATHS.default_script_dir
-GOOGLE_SQL_DIR = _PATHS.google_sql_dir
-
-EXTRA_PATHS = _PATHS.v1_extra_paths
-
-API_SERVER_EXTRA_PATHS = _PATHS.api_server_extra_paths
-
-ENDPOINTSCFG_EXTRA_PATHS = _PATHS.endpointscfg_extra_paths
-
-
-OAUTH_CLIENT_EXTRA_PATHS = _PATHS.oauth_client_extra_paths
-
-
-GOOGLE_SQL_EXTRA_PATHS = _PATHS.google_sql_extra_paths
-
-
+    if not hasattr(google_module, '__file__') or not google_module.__file__:
+      google_module.__file__ = os.path.join(google_path, '__init__.py')
 
 
 def fix_sys_path(extra_extra_paths=()):
-  """Fix the sys.path to include our extra paths."""
-  sys.path = EXTRA_PATHS + list(extra_extra_paths) + sys.path
+  """Fix the sys.path to include our extra paths.
+
+  fix_sys_path should be called before running testbed-based unit tests so that
+  third-party modules are correctly added to sys.path.
+  """
+  sys.path[1:1] = EXTRA_PATHS
+  fix_google_path()
 
 
-def run_file(file_path, globals_):
+def _run_file(file_path, globals_):
   """Execute the given script with the passed-in globals.
 
   Args:
@@ -117,17 +85,12 @@ def run_file(file_path, globals_):
   sys.path = (_PATHS.script_paths(script_name) +
               _PATHS.scrub_path(script_name, sys.path))
 
-
-
-
-
-
-
-  if 'google' in sys.modules:
-    del sys.modules['google']
+  fix_google_path()
 
   execfile(_PATHS.script_file(script_name), globals_)
 
 
 if __name__ == '__main__':
-  run_file(__file__, globals())
+
+  assert sys.version_info[0] == 2
+  _run_file(__file__, globals())

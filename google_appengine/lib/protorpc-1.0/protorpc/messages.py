@@ -87,7 +87,7 @@ __all__ = ['MAX_ENUM_VALUE',
           ]
 
 
-# TODO(rafek): Add extended module test to ensure all exceptions
+# TODO(user): Add extended module test to ensure all exceptions
 # in services extends Error.
 Error = util.Error
 
@@ -504,7 +504,7 @@ class Enum(object):
     return type(name, (Enum,), dct)
 
 
-# TODO(rafek): Determine to what degree this enumeration should be compatible
+# TODO(user): Determine to what degree this enumeration should be compatible
 # with FieldDescriptor.Type in:
 #
 #   http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/descriptor.proto
@@ -987,7 +987,7 @@ class Message(object):
     Args:
       other: Other message to compare with.
     """
-    # TODO(rafek): Implement "equivalent" which does comparisons
+    # TODO(user): Implement "equivalent" which does comparisons
     # taking default values in to consideration.
     if self is other:
       return True
@@ -1098,7 +1098,7 @@ class FieldList(list):
     return list.insert(self, index, value)
 
 
-# TODO(rafek): Prevent additional field subclasses.
+# TODO(user): Prevent additional field subclasses.
 class Field(object):
 
   __variant_to_type = {}
@@ -1744,7 +1744,7 @@ def find_definition(name, relative_to=None, importer=__import__):
   """Find definition by name in module-space.
 
   The find algorthm will look for definitions by name relative to a message
-  definition or by fully qualfied name.  If no definition is found relative
+  definition or by fully qualified name.  If no definition is found relative
   to the relative_to parameter it will do the same search against the container
   of relative_to.  If relative_to is a nested Message, it will search its
   message_definition().  If that message has no message_definition() it will

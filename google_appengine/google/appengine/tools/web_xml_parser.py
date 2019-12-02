@@ -26,7 +26,6 @@ SecurityConstraint: Contains information about specified security constraints.
 """
 
 import logging
-
 from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
@@ -95,7 +94,7 @@ class WebXmlParser(object):
     camel_case_name = ''.join(part.title() for part in element_name.split('-'))
     method_name = 'Process%sNode' % camel_case_name
     if (hasattr(self, method_name) and
-        method_name is not 'ProcessSecondLevelNode'):
+        method_name != 'ProcessSecondLevelNode'):
       getattr(self, method_name)(node)
     else:
       logging.warning('Second-level tag not recognized: %s', element_name)
@@ -123,10 +122,11 @@ class WebXmlParser(object):
     """
     url_pattern_node = xml_parser_utils.GetChild(node, 'url-pattern')
     if url_pattern_node is not None:
-      self.web_xml.patterns.append(url_pattern_node.text)
+      node_text = xml_parser_utils.GetNodeText(url_pattern_node)
+      self.web_xml.patterns.append(node_text)
       id_attr = xml_parser_utils.GetAttribute(url_pattern_node, 'id')
       if id_attr:
-        self.web_xml.pattern_to_id[url_pattern_node.text] = id_attr
+        self.web_xml.pattern_to_id[node_text] = id_attr
 
   def ProcessErrorPageNode(self, node):
     """Process error page specifications.
@@ -147,7 +147,7 @@ class WebXmlParser(object):
 
   def ProcessWelcomeFileListNode(self, node):
     for welcome_node in xml_parser_utils.GetNodes(node, 'welcome-file'):
-      welcome_file = welcome_node.text
+      welcome_file = xml_parser_utils.GetNodeText(welcome_node)
       if welcome_file and welcome_file[0] == '/':
         self.errors.append('Welcome files must be relative paths: %s' %
                            welcome_file)
@@ -181,8 +181,9 @@ class WebXmlParser(object):
     security_constraint = SecurityConstraint()
     resources_node = xml_parser_utils.GetChild(node, 'web-resource-collection')
     security_constraint.patterns = [
-        sub_node.text for sub_node in xml_parser_utils.GetNodes(
-            resources_node, 'url-pattern')]
+        xml_parser_utils.GetNodeText(sub_node)
+        for sub_node in xml_parser_utils.GetNodes(resources_node,
+                                                  'url-pattern')]
     constraint = xml_parser_utils.GetChild(node, 'auth-constraint')
     if constraint is not None:
       role_name = xml_parser_utils.GetChildNodeText(

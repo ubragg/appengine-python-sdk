@@ -19,274 +19,17 @@
 
 
 import argparse
-import getpass
-import itertools
 import os
-import os.path
-import sys
-import tempfile
+import platform
 import unittest
 
 import google
-import mox
-
+import mock
 from google.appengine.tools.devappserver2 import devappserver2
 
 
 class WinError(Exception):
   pass
-
-
-class GenerateStoragePathsTest(unittest.TestCase):
-  """Tests for devappserver._generate_storage_paths."""
-
-  def setUp(self):
-    self.mox = mox.Mox()
-    self.mox.StubOutWithMock(getpass, 'getuser')
-    self.mox.StubOutWithMock(tempfile, 'gettempdir')
-
-  def tearDown(self):
-    self.mox.UnsetStubs()
-
-  @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
-  def test_windows(self):
-    tempfile.gettempdir().AndReturn('/tmp')
-
-    self.mox.ReplayAll()
-    self.assertEqual(
-        [os.path.join('/tmp', 'appengine.myapp'),
-         os.path.join('/tmp', 'appengine.myapp.1'),
-         os.path.join('/tmp', 'appengine.myapp.2')],
-        list(itertools.islice(devappserver2._generate_storage_paths('myapp'),
-                              3)))
-    self.mox.VerifyAll()
-
-  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
-  def test_working_getuser(self):
-    getpass.getuser().AndReturn('johndoe')
-    tempfile.gettempdir().AndReturn('/tmp')
-
-    self.mox.ReplayAll()
-    self.assertEqual(
-        [os.path.join('/tmp', 'appengine.myapp.johndoe'),
-         os.path.join('/tmp', 'appengine.myapp.johndoe.1'),
-         os.path.join('/tmp', 'appengine.myapp.johndoe.2')],
-        list(itertools.islice(devappserver2._generate_storage_paths('myapp'),
-                              3)))
-    self.mox.VerifyAll()
-
-  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
-  def test_broken_getuser(self):
-    getpass.getuser().AndRaise(Exception())
-    tempfile.gettempdir().AndReturn('/tmp')
-
-    self.mox.ReplayAll()
-    self.assertEqual(
-        [os.path.join('/tmp', 'appengine.myapp'),
-         os.path.join('/tmp', 'appengine.myapp.1'),
-         os.path.join('/tmp', 'appengine.myapp.2')],
-        list(itertools.islice(devappserver2._generate_storage_paths('myapp'),
-                              3)))
-    self.mox.VerifyAll()
-
-
-class GetStoragePathTest(unittest.TestCase):
-  """Tests for devappserver._get_storage_path."""
-
-  def setUp(self):
-    self.mox = mox.Mox()
-    self.mox.StubOutWithMock(devappserver2, '_generate_storage_paths')
-
-  def tearDown(self):
-    self.mox.UnsetStubs()
-
-  def test_no_path_given_directory_does_not_exist(self):
-    path = tempfile.mkdtemp()
-    os.rmdir(path)
-    devappserver2._generate_storage_paths('example.com_myapp').AndReturn([path])
-
-    self.mox.ReplayAll()
-    self.assertEqual(
-        path,
-        devappserver2._get_storage_path(None, 'dev~example.com:myapp'))
-    self.mox.VerifyAll()
-    self.assertTrue(os.path.isdir(path))
-
-  def test_no_path_given_directory_exists(self):
-    path1 = tempfile.mkdtemp()
-    os.chmod(path1, 0777)
-    path2 = tempfile.mkdtemp()  # Made with mode 0700.
-
-    devappserver2._generate_storage_paths('example.com_myapp').AndReturn(
-        [path1, path2])
-
-    self.mox.ReplayAll()
-    if sys.platform == 'win32':
-      expected_path = path1
-    else:
-      expected_path = path2
-    self.assertEqual(
-        expected_path,
-        devappserver2._get_storage_path(None, 'dev~example.com:myapp'))
-    self.mox.VerifyAll()
-
-  def test_path_given_does_not_exist(self):
-    path = tempfile.mkdtemp()
-    os.rmdir(path)
-
-    self.assertEqual(
-        path,
-        devappserver2._get_storage_path(path, 'dev~example.com:myapp'))
-    self.assertTrue(os.path.isdir(path))
-
-  def test_path_given_not_directory(self):
-    _, path = tempfile.mkstemp()
-
-    self.assertRaises(
-        IOError,
-        devappserver2._get_storage_path, path, 'dev~example.com:myapp')
-
-  def test_path_given_exists(self):
-    path = tempfile.mkdtemp()
-
-    self.assertEqual(
-        path,
-        devappserver2._get_storage_path(path, 'dev~example.com:myapp'))
-
-
-class PortParserTest(unittest.TestCase):
-
-  def test_valid_port(self):
-    self.assertEqual(8080, devappserver2.PortParser()('8080'))
-
-  def test_port_zero_allowed(self):
-    self.assertEqual(0, devappserver2.PortParser()('0'))
-
-  def test_port_zero_not_allowed(self):
-    self.assertRaises(argparse.ArgumentTypeError,
-                      devappserver2.PortParser(allow_port_zero=False), '0')
-
-  def test_negative_port(self):
-    self.assertRaises(argparse.ArgumentTypeError, devappserver2.PortParser(),
-                      '-1')
-
-  def test_port_too_high(self):
-    self.assertRaises(argparse.ArgumentTypeError, devappserver2.PortParser(),
-                      '65536')
-
-  def test_port_max_value(self):
-    self.assertEqual(65535, devappserver2.PortParser()('65535'))
-
-  def test_not_an_int(self):
-    self.assertRaises(argparse.ArgumentTypeError, devappserver2.PortParser(),
-                      'a port')
-
-
-class ParseMaxServerInstancesTest(unittest.TestCase):
-
-  def test_single_valid_arg(self):
-    self.assertEqual(1, devappserver2.parse_max_module_instances('1'))
-
-  def test_single_zero_arg(self):
-    self.assertRaisesRegexp(argparse.ArgumentTypeError,
-                            'count must be greater than zero',
-                            devappserver2.parse_max_module_instances, '0')
-
-  def test_single_negative_arg(self):
-    self.assertRaisesRegexp(argparse.ArgumentTypeError,
-                            'count must be greater than zero',
-                            devappserver2.parse_max_module_instances, '-1')
-
-  def test_single_nonint_arg(self):
-    self.assertRaisesRegexp(argparse.ArgumentTypeError,
-                            'Invalid max instance count:',
-                            devappserver2.parse_max_module_instances, 'cat')
-
-  def test_multiple_valid_args(self):
-    self.assertEqual(
-        {'default': 10,
-         'foo': 5},
-        devappserver2.parse_max_module_instances('default:10,foo:5'))
-
-  def test_multiple_non_colon(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'Expected "module:max_instance_count"',
-        devappserver2.parse_max_module_instances, 'default:10,foo')
-
-  def test_multiple_non_int(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'Expected "module:max_instance_count"',
-        devappserver2.parse_max_module_instances, 'default:cat')
-
-  def test_duplicate_modules(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'Duplicate max instance count',
-        devappserver2.parse_max_module_instances, 'default:5,default:10')
-
-  def test_multiple_with_zero(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'count for module zero must be greater than zero',
-        devappserver2.parse_max_module_instances, 'default:5,zero:0')
-
-  def test_multiple_with_negative(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'count for module negative must be greater than zero',
-        devappserver2.parse_max_module_instances, 'default:5,negative:-1')
-
-  def test_multiple_missing_name(self):
-    self.assertEqual(
-        {'default': 10},
-        devappserver2.parse_max_module_instances(':10'))
-
-  def test_multiple_missing_count(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'Expected "module:max_instance_count"',
-        devappserver2.parse_max_module_instances, 'default:')
-
-
-class ParseThreadsafeOverrideTest(unittest.TestCase):
-
-  def test_single_valid_arg(self):
-    self.assertTrue(devappserver2.parse_threadsafe_override('True'))
-    self.assertFalse(devappserver2.parse_threadsafe_override('No'))
-
-  def test_single_nonbool_art(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError, 'Invalid threadsafe override',
-        devappserver2.parse_threadsafe_override, 'okaydokey')
-
-  def test_multiple_valid_args(self):
-    self.assertEqual(
-        {'default': False,
-         'foo': True},
-        devappserver2.parse_threadsafe_override('default:False,foo:True'))
-
-  def test_multiple_non_colon(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError, 'Expected "module:threadsafe_override"',
-        devappserver2.parse_threadsafe_override, 'default:False,foo')
-
-  def test_multiple_non_int(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError, 'Expected "module:threadsafe_override"',
-        devappserver2.parse_threadsafe_override, 'default:okaydokey')
-
-  def test_duplicate_modules(self):
-    self.assertRaisesRegexp(
-        argparse.ArgumentTypeError,
-        'Duplicate threadsafe override value',
-        devappserver2.parse_threadsafe_override, 'default:False,default:True')
-
-  def test_multiple_missing_name(self):
-    self.assertEqual(
-        {'default': False},
-        devappserver2.parse_threadsafe_override(':No'))
 
 
 class FakeApplicationConfiguration(object):
@@ -333,28 +76,156 @@ class CreateModuleToSettingTest(unittest.TestCase):
             {'m1': 3.5, 'm4': 2.7}, self.application_configuration, '--option'))
 
 
-class CommandLineParserTest(unittest.TestCase):
-  """Tests for devappserver.create_command_line_parser."""
+class CheckDatastoreEmulatorBinaryExistenceTest(unittest.TestCase):
+  """Tests for _fail_for_using_datastore_emulator_from_legacy_sdk."""
 
-  def test_default_host(self):
-    self.assertEquals(
-        'localhost',
-        devappserver2.create_command_line_parser().get_default('host'))
+  def setUp(self):
+    self.options = argparse.Namespace()
+    self.dev_server = devappserver2.DevelopmentServer()
 
-  def test_devshell_host(self):
-    os.environ[devappserver2._DEVSHELL_ENV] = 'port'
-    try:
-      self.assertEquals(
-          '0.0.0.0',
-          devappserver2.create_command_line_parser().get_default('host'))
-      self.assertEquals(
-          '0.0.0.0',
-          devappserver2.create_command_line_parser().get_default('admin_host'))
-      self.assertEquals(
-          '0.0.0.0',
-          devappserver2.create_command_line_parser().get_default('api_host'))
-    finally:
-      os.environ[devappserver2._DEVSHELL_ENV] = ''
+  @mock.patch.object(os.path, 'exists', return_value=False)
+  def test_fail_missing_emulator(self, unused_mock):
+    # Following flags simulate the scenario of invoking dev_appserver.py from
+    # google-cloud-sdk/platform/google_appengine
+    self.options.support_datastore_emulator = True
+    self.options.datastore_emulator_cmd = None
+    with self.assertRaises(devappserver2.MissingDatastoreEmulatorError) as ctx:
+      self.dev_server._options = self.options
+      self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
+    self.assertIn('Cannot find Cloud Datastore Emulator', ctx.exception.message)
+
+  def test_succeed_not_using_emulator(self):
+    self.options.support_datastore_emulator = False
+    self.options.datastore_emulator_cmd = None
+    self.dev_server._options = self.options
+    self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
+
+  @mock.patch.object(os.path, 'exists', return_value=True)
+  def test_succeed_emulator_binary_exists(self, unused_mock):
+    self.options.support_datastore_emulator = True
+    self.options.datastore_emulator_cmd = ''
+    self.dev_server._options = self.options
+    self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
+
+
+@mock.patch(
+    'google.appengine.tools.devappserver2.devappserver2'
+    '._DatastoreEmulatorDepManager.error_hint', new_callable=mock.PropertyMock)
+class DecideUseDatastoreEmulatorTest(unittest.TestCase):
+  """Tests for DevelopmentServer._decide_use_datastore_emulator."""
+
+  def setUp(self):
+    self.options = argparse.Namespace()
+    self.options.datastore_emulator_cmd = ''
+    self.options.google_analytics_client_id = '123'
+    self.dev_server = devappserver2.DevelopmentServer()
+    devappserver2._EMULATOR_ENROLL_CID_SUFFIX = ['1', '2']
+
+  @mock.patch('logging.info')
+  def test_explicit_opt_in_succeed(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = True
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertTrue(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+
+  def test_explicit_opt_in_fail(self, mock_error_hint):
+    mock_error_hint.return_value = 'Some hint'
+    self.options.support_datastore_emulator = True
+    self.dev_server._options = self.options
+    self.assertRaises(
+        RuntimeError,
+        self.dev_server._decide_use_datastore_emulator)
+
+  @mock.patch('logging.info')
+  def test_selected_opt_in_succeed(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = None
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertTrue(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+    self.assertIn('Using Cloud Datastore Emulator',
+                  mock_logging.call_args_list[0][0][0])
+
+  @mock.patch('logging.debug')
+  def test_selected_opt_in_fail(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = 'Some hint'
+    self.options.support_datastore_emulator = None
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertFalse(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+    self.assertEqual('Some hint', mock_logging.call_args_list[0][0][0])
+
+  @mock.patch('logging.info')
+  def test_explicit_opt_out(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = False
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertFalse(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_not_called()
+
+
+class _DatastoreEmulatorDepManagerTest(unittest.TestCase):
+  """Tests generating grpc import report."""
+
+  @mock.patch('__builtin__.__import__', side_effect=mock.Mock())
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=8)
+  def test_grpc_import_succeed_java_check_succeed(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertNotIn('ImportError', dep_manager.grpc_import_report)
+    self.assertTrue(dep_manager.satisfied)
+    self.assertIsNone(dep_manager.error_hint)
+
+  @mock.patch('__builtin__.__import__', side_effect=mock.Mock())
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=7)
+  def test_grpc_import_succeed_java_check_fail(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertNotIn('ImportError', dep_manager.grpc_import_report)
+    self.assertFalse(dep_manager.satisfied)
+    self.assertIn('make sure Java 8+ is installed', dep_manager.error_hint)
+
+  @mock.patch('__builtin__.__import__',
+              side_effect=ImportError('Cannot import cygrpc'))
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=8)
+  def test_grpc_import_fail_java_check_succeed(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertEqual(repr(ImportError('Cannot import cygrpc')),
+                     dep_manager.grpc_import_report['ImportError'])
+    self.assertFalse(dep_manager.satisfied)
+    self.assertIn('grpcio is incompatible', dep_manager.error_hint)
+
+
+class PlatformSupportCheckTest(unittest.TestCase):
+
+  def test_succeed_non_python3_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Windows'):
+      devappserver2.DevelopmentServer._check_platform_support({'python2'})
+      platform.system.assert_not_called()
+
+  def test_succeed_python3_non_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Linux'):
+      devappserver2.DevelopmentServer._check_platform_support({'python3'})
+      platform.system.assert_called_once_with()
+
+  def test_fail_python3_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Windows'):
+      with self.assertRaises(OSError):
+        devappserver2.DevelopmentServer._check_platform_support(
+            {'python3', 'python2'})
+      platform.system.assert_called_once_with()
 
 
 if __name__ == '__main__':

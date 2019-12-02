@@ -20,81 +20,82 @@
 
 """A module to use service stubs for testing.
 
-To test applications which use App Engine services such as the
-datastore, developers can use the available stub
-implementations. Service stubs behave like the original service
-without permanent side effects. The datastore stub for example allows
-to write entities into memory without storing them to the actual
-datastore. This module makes using those stubs for testing easier.
+To test applications that use App Engine services, such as datastore,
+developers can use the available stub implementations. Service stubs behave like
+the original service without causing permanent side effects. The datastore stub,
+for example, allows you to write entities into memory without storing them to
+the actual datastore. The testbed module makes using those stubs for testing
+easier.
 
-Here is a basic example:
-'''
-import unittest
+Example::
 
-from google.appengine.ext import db
-from google.appengine.ext import testbed
+    import unittest
 
-
-class TestModel(db.Model):
-  number = db.IntegerProperty(default=42)
+    from google.appengine.ext import ndb
+    from google.appengine.ext import testbed
 
 
-class MyTestCase(unittest.TestCase):
+    class TestModel(ndb.Model):
+      number = ndb.IntegerProperty(default=42)
 
-  def setUp(self):
-    # At first, create an instance of the Testbed class.
-    self.testbed = testbed.Testbed()
-    # Then activate the testbed which will prepare the usage of service stubs.
-    self.testbed.activate()
-    # Next, declare which service stubs you want to use.
-    self.testbed.init_datastore_v3_stub()
-    self.testbed.init_memcache_stub()
 
-  def tearDown(self):
-    # Never forget to deactivate the testbed once the tests are
-    # completed. Otherwise the original stubs will not be restored.
-    self.testbed.deactivate()
+    class MyTestCase(unittest.TestCase):
 
-  def testInsertEntity(self):
-    # Because we use the datastore stub, this put() does not have
-    # permanent side effects.
-    TestModel().put()
-    fetched_entities = TestModel.all().fetch(2)
-    self.assertEqual(1, len(fetched_entities))
-    self.assertEqual(42, fetched_entities[0].number)
-'''
+      def setUp(self):
+        # First, create an instance of the Testbed class.
+        self.testbed = testbed.Testbed()
+        # Then activate the testbed, which will allow you to use
+        # service stubs.
+        self.testbed.activate()
+        # Next, declare which service stubs you want to use.
+        self.testbed.init_datastore_v3_stub()
+        self.testbed.init_memcache_stub()
+
+      def tearDown(self):
+        # Don't forget to deactivate the testbed after the tests are
+        # completed. If the testbed is not deactivated, the original
+        # stubs will not be restored.
+        self.testbed.deactivate()
+
+      def testInsertEntity(self):
+        # Because we use the datastore stub, this put() does not have
+        # permanent side effects.
+        TestModel().put()
+        fetched_entities = TestModel.query().fetch(2)
+        self.assertEqual(1, len(fetched_entities))
+        self.assertEqual(42, fetched_entities[0].number)
+
 
 
 Enable stubs and disable services
 ---------------------------------
 
-This module allows you to use stubs for the following services:
-- capability_service
-- channel
-- datastore_v3 (aka datastore)
-- images (only for dev_appserver)
-- mail (only for dev_appserver)
-- memcache
-- taskqueue
-- urlfetch
-- user
-- xmpp
+The testbed module allows you to use stubs for the following services:
+    - capability_service
+    - channel
+    - datastore_v3 (aka datastore)
+    - images (only for dev_appserver)
+    - mail (only for dev_appserver)
+    - memcache
+    - taskqueue
+    - urlfetch
+    - user
+    - xmpp
 
-To use a particular service stub, call self.init_SERVICENAME_stub().
-This will replace calls to the service with calls to the service
-stub. If you want to disable any calls to a particular service, call
-self.init_SERVICENAME_stub(enable=False). This can be useful if you
-want to test code that must not use a certain service.
+To use a particular service stub, call `self.init_SERVICENAME_stub()`. Using
+this call will replace calls to the service with calls to the service stub. If
+you want to disable any calls to a particular service, call
+`self.init_SERVICENAME_stub(enable=False)`. This call can be useful if you want
+to test code that must not use a certain service.
 
 
 Environment variables
 ---------------------
 
-App Engine service stubs often depend on environment variables. For
-example, the datastore stub uses os.environ['APPLICATION_ID'] to store
-entities linked to a particular app. testbed will use default values
-if nothing else is provided, but you can change those with
-self.setup_env().
+App Engine service stubs often depend on environment variables. For example, the
+datastore stub uses `os.environ['APPLICATION_ID']` to store entities linked to a
+particular app. testbed will use default values if nothing else is provided, but
+you can change those values with `self.setup_env()`.
 """
 
 
@@ -105,8 +106,17 @@ self.setup_env().
 
 
 import os
-import unittest
+import threading
 
+
+
+
+
+
+
+
+
+from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_file_stub
 try:
@@ -151,10 +161,24 @@ from google.appengine.datastore import datastore_stub_util
 from google.appengine.datastore import datastore_v4_stub
 from google.appengine.ext.cloudstorage import common as gcs_common
 from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
+try:
 
+
+  from google.appengine.ext.remote_api import remote_api_stub
+except ImportError:
+  pass
+try:
+
+
+
+
+  from google.appengine.ext.testbed import apiserver_util
+except ImportError:
+  apiserver_util = None
 
 
 DEFAULT_ENVIRONMENT = {
+    'APPENGINE_RUNTIME': 'python27',
     'APPLICATION_ID': 'testbed-test',
     'AUTH_DOMAIN': 'gmail.com',
     'HTTP_HOST': 'testbed.example.com',
@@ -226,9 +250,9 @@ AUTO_ID_POLICY_SCATTERED = datastore_stub_util.SCATTERED
 
 def urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
                          follow_redirects=False, deadline=None,
-                         validate_certificate=None):
+                         validate_certificate=None, http_proxy=None):
 
-  """Forwards gcs urlfetch requests to gcs_dispatcher."""
+  """Forwards Google Cloud Storage `urlfetch` requests to gcs_dispatcher."""
   headers_map = dict(
       (header.key().lower(), header.value()) for header in headers)
   result = gcs_dispatcher.dispatch(method, headers_map, url, payload)
@@ -245,7 +269,7 @@ def urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
 
 
 def urlmatcher_for_gcs_stub(url):
-  """Determines whether a url should be handled by gcs stub."""
+  """Determines whether a URL should be handled by the Cloud Storage stub."""
   return url.startswith(gcs_common.local_api_url())
 
 
@@ -266,16 +290,87 @@ class StubNotSupportedError(Error):
   """Raised if an unsupported service stub is accessed."""
 
 
+class EmulatorSupportChecker(object):
+  """A static class. Checks whether datastore emulator is supported.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  """
+
+  _check_lock = threading.Lock()
+  _use_datastore_emulator = None
+  _api_port = None
+
+  @classmethod
+  def get_api_port(cls):
+    """Returns the integer port number that api_server listens on."""
+    return cls._api_port
+
+  @classmethod
+  def get_emulator_port(cls):
+    """Returns the integer port number that datastore emulator listens on."""
+    return cls._emulator_port
+
+  @classmethod
+  def init(cls, api_port, emulator_port):
+    cls._api_port = api_port
+    cls._emulator_port = emulator_port
+    cls._use_datastore_emulator = True
+
+  @classmethod
+  def check(cls):
+    """Checks whether cloud datastore should be used.
+
+    In a unittest test process, the first call to this method sets the value of
+    _use_datastore_emulator and _api_port. Subsequent calls to this method can
+    read _use_datastore_emulator.
+
+    Returns:
+      A boolean that indicates whether cloud datastore should be used.
+    """
+
+    cls._check_lock.acquire()
+    if cls._use_datastore_emulator is None:
+      if os.environ.get('APPENGINE_TESTBED_USES_DATASTORE_EMULATOR'):
+
+        cls._use_datastore_emulator = True
+        cls._api_port = int(os.environ['API_SERVER_PORT'])
+        cls._emulator_port = int(os.environ['DATASTORE_EMULATOR_PORT'])
+
+
+
+
+
+
+
+
+      else:
+        cls._use_datastore_emulator = False
+    cls._check_lock.release()
+    return cls._use_datastore_emulator
+
+
 
 class Testbed(object):
   """Class providing APIs to manipulate stubs for testing.
 
-  This class allows to replace App Engine services with fake stub
-  implementations. These stubs act like the actual APIs but do not
-  invoke the replaced services.
+  This class allows you to replace App Engine services with fake stub
+  implementations. These stubs act like the actual APIs but do not invoke the
+  replaced services.
 
-  In order to use a fake service stub or disable a real service,
-  invoke the corresponding 'init_*_stub' methods of this class.
+  In order to use a fake service stub or disable a real service, invoke the
+  corresponding `init_*_stub` methods of this class.
   """
 
   def __init__(self):
@@ -285,13 +380,17 @@ class Testbed(object):
 
     self._blob_storage = None
 
-  def activate(self):
-    """Activate the testbed.
+  def activate(self, use_datastore_emulator=False):
+    """Activates the testbed.
 
-    Invoking this method will also assign default values to
-    environment variables required by App Engine services such as
-    os.environ['APPLICATION_ID']. You can set custom values with
-    setup_env().
+    Invoking this method will also assign default values to environment
+    variables that are required by App Engine services, such as
+    `os.environ['APPLICATION_ID']`. You can set custom values with
+    `setup_env()`.
+
+    Args:
+      use_datastore_emulator: True if user specifies testbed to use the Cloud
+        Datastore Emulator.
     """
     self._orig_env = dict(os.environ)
     self.setup_env()
@@ -308,14 +407,33 @@ class Testbed(object):
     apiproxy_stub_map.apiproxy = self._test_stub_map
     self._activated = True
 
+    if use_datastore_emulator:
+      if not EmulatorSupportChecker.check():
+        api_port, emulator_port = apiserver_util.setup_api_server()
+        EmulatorSupportChecker.init(api_port, emulator_port)
+      self._use_datastore_emulator = True
+    else:
+      self._use_datastore_emulator = EmulatorSupportChecker.check()
+    if self._use_datastore_emulator:
+      self.api_port = EmulatorSupportChecker.get_api_port()
+      self.rpc_server = remote_api_stub.ConfigureRemoteApi(
+          os.environ['APPLICATION_ID'],
+          '/',
+          lambda: ('', ''),
+          'localhost:%d' % self.api_port,
+          services=[],
+          apiproxy=self._test_stub_map,
+          use_remote_datastore=False)
+      self._emulator_port = EmulatorSupportChecker.get_emulator_port()
+
   def deactivate(self):
-    """Deactivate the testbed.
+    """Deactivates the testbed.
 
     This method will restore the API proxy and environment variables to the
-    state before activate() was called.
+    state they were in before `activate()` was called.
 
     Raises:
-      NotActivatedError: If called before activate() was called.
+      NotActivatedError: If called before `activate()` was called.
     """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
@@ -334,27 +452,30 @@ class Testbed(object):
     self._activated = False
 
   def setup_env(self, overwrite=False, **kwargs):
-    """Set up environment variables.
+    """Sets default and custom environment variables.
 
-    Sets default and custom environment variables.  By default, all the items in
-    DEFAULT_ENVIRONMENT will be created without being specified.  To set a value
-    other than the default, or to pass a custom environment variable, pass a
-    corresponding keyword argument:
+    By default, all of the items in `DEFAULT_ENVIRONMENT` will be created
+    without being specified.  To set a value other than the default, or to pass
+    a custom environment variable, pass a corresponding keyword argument.
 
-    testbed_instance.setup_env()  # All defaults.
-    testbed_instance.setup_env(auth_domain='custom')  # All defaults, overriding
-                                                      # AUTH_DOMAIN.
-    testbed_instance.setup_env(custom='foo')  # All defaults, plus a custom
-                                              # os.environ['CUSTOM'] = 'foo'.
+    Example::
 
-    To overwrite values set by a previous invocation, pass overwrite=True.  This
-    will not result in an OVERWRITE entry in os.environ.
+        # All defaults
+        testbed_instance.setup_env()
+        # All defaults, overriding AUTH_DOMAIN
+        testbed_instance.setup_env(auth_domain='custom')
+        # All defaults; adds a custom os.environ['CUSTOM'] = 'foo'
+        testbed_instance.setup_env(custom='foo')
+
+
+    To overwrite the values set by a previous invocation, pass `overwrite=True`.
+    Passing this value will not result in an `OVERWRITE` entry in `os.environ`.
 
     Args:
-      overwrite: boolean.  Whether to overwrite items with corresponding entries
-                 in os.environ.
-      **kwargs: environment variables to set.  The name of the argument will be
-                uppercased and used as a key in os.environ.
+      overwrite: Boolean; specifies whether to overwrite items with
+          corresponding entries in `os.environ`.
+      **kwargs: Environment variables to set. The name of the argument will be
+          uppercased and used as a key in `os.environ`.
     """
     merged_kwargs = {}
     for key, value in kwargs.iteritems():
@@ -371,13 +492,13 @@ class Testbed(object):
         os.environ[key] = value
 
   def _register_stub(self, service_name, stub, deactivate_callback=None):
-    """Register a service stub.
+    """Registers a service stub.
 
     Args:
       service_name: The name of the service the stub represents.
       stub: The stub.
-      deactivate_callback: An optional function to call when deactivating the
-        stub. Must accept the stub as the only argument.
+      deactivate_callback: An optional function to call to deactivate the
+          stub. Must accept the stub as the only argument.
 
     Raises:
       NotActivatedError: The testbed is not activated.
@@ -387,7 +508,7 @@ class Testbed(object):
     self._enabled_stubs[service_name] = deactivate_callback
 
   def _disable_stub(self, service_name):
-    """Disable a service stub.
+    """Disables a service stub.
 
     Args:
       service_name: The name of the service to disable.
@@ -404,13 +525,13 @@ class Testbed(object):
       del self._test_stub_map._APIProxyStubMap__stub_map[service_name]
 
   def get_stub(self, service_name):
-    """Get the stub for a service.
+    """Gets the stub for a service.
 
     Args:
       service_name: The name of the service.
 
     Returns:
-      The stub for 'service_name'.
+      The stub for `service_name`.
 
     Raises:
       NotActivatedError: The testbed is not activated.
@@ -427,11 +548,11 @@ class Testbed(object):
     return self._test_stub_map.GetStub(service_name)
 
   def init_app_identity_stub(self, enable=True):
-    """Enable the app identity stub.
+    """Enables the app identity stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(APP_IDENTITY_SERVICE_NAME)
@@ -447,11 +568,11 @@ class Testbed(object):
     return self._blob_storage
 
   def init_blobstore_stub(self, enable=True):
-    """Enable the blobstore stub.
+    """Enables the blobstore stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(BLOBSTORE_SERVICE_NAME)
@@ -461,11 +582,11 @@ class Testbed(object):
     self._register_stub(BLOBSTORE_SERVICE_NAME, stub)
 
   def init_capability_stub(self, enable=True):
-    """Enable the capability stub.
+    """Enables the capability stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(CAPABILITY_SERVICE_NAME)
@@ -474,11 +595,11 @@ class Testbed(object):
     self._register_stub(CAPABILITY_SERVICE_NAME, stub)
 
   def init_channel_stub(self, enable=True):
-    """Enable the channel stub.
+    """Enables the channel stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(CHANNEL_SERVICE_NAME)
@@ -490,29 +611,62 @@ class Testbed(object):
                              use_sqlite=False,
                              auto_id_policy=AUTO_ID_POLICY_SEQUENTIAL,
                              **stub_kw_args):
-    """Enable the datastore stub.
+    """Enables the datastore stub.
 
-    The 'datastore_file' argument can be the path to an existing
-    datastore file, or None (default) to use an in-memory datastore
-    that is initially empty.  If you use the sqlite stub and have
-    'datastore_file' defined, changes you apply in a test will be
-    written to the file.  If you use the default datastore stub,
-    changes are _not_ saved to disk unless you set save_changes=True.
+    The `datastore_file` argument can be set to the path of an existing
+    datastore file, or `None` (default) to use an in-memory datastore that is
+    initially empty. If you use the sqlite stub and have defined
+    `datastore_file`, the changes that you apply in a test will be written to
+    the file. If you use the default datastore stub, changes are *not* saved to
+    disk unless you set `save_changes=True`.
 
-    Note that you can only access those entities of the datastore file
-    which have the same application ID associated with them as the
-    test run. You can change the application ID for a test with
-    setup_env().
+    Note:
+        You can only access those entities of the datastore file that use the
+        same application ID as the test run. You can change the application ID
+        for a test with `setup_env()`.
 
     Args:
-      enable: True if the fake service should be enabled, False if real
-        service should be disabled.
-      datastore_file: Filename of a dev_appserver datastore file.
-      use_sqlite: True to use the Sqlite stub, False (default) for file stub.
-      auto_id_policy: How datastore stub assigns auto IDs. Either
-        AUTO_ID_POLICY_SEQUENTIAL or AUTO_ID_POLICY_SCATTERED.
-      stub_kw_args: Keyword arguments passed on to the service stub.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      datastore_file: File name of a dev_appserver datastore file.
+      use_sqlite: `True` to use the Sqlite stub, or `False` (default) to use
+          the file stub.
+      auto_id_policy: How datastore stub assigns auto IDs. This value can be
+          either `AUTO_ID_POLICY_SEQUENTIAL` or `AUTO_ID_POLICY_SCATTERED`.
+      **stub_kw_args: Keyword arguments passed on to the service stub.
+
+    Raises:
+      StubNotSupportedError: If datastore_sqlite_stub is None.
     """
+    if self._use_datastore_emulator:
+
+
+
+
+
+      self._disable_stub(DATASTORE_SERVICE_NAME)
+
+      delegate_stub = (
+          remote_api_stub.DatastoreStubTestbedDelegate(
+              self.rpc_server, '/', stub_kw_args.get(
+                  'max_request_size', apiproxy_stub.MAX_REQUEST_SIZE),
+              emulator_port=self._emulator_port))
+      delegate_stub.Clear()
+      self._test_stub_map.RegisterStub(
+          DATASTORE_SERVICE_NAME, delegate_stub)
+      consistency_policy = stub_kw_args.get(
+          'consistency_policy',
+          datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1.0))
+      datastore_stub_util.UpdateEmulatorConfig(
+          self._emulator_port, auto_id_policy, consistency_policy)
+      if isinstance(consistency_policy,
+                    datastore_stub_util.PseudoRandomHRConsistencyPolicy):
+        consistency_policy.is_using_cloud_datastore_emulator = True
+        consistency_policy.emulator_port = self._emulator_port
+
+
+      self._enabled_stubs[DATASTORE_SERVICE_NAME] = None
+      return
     if not enable:
       self._disable_stub(DATASTORE_SERVICE_NAME)
       self._disable_stub(datastore_v4_stub.SERVICE_NAME)
@@ -552,11 +706,11 @@ class Testbed(object):
     stub.Write()
 
   def init_files_stub(self, enable=True):
-    """Enable files api stub.
+    """Enables the Files API stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(FILES_SERVICE_NAME)
@@ -566,15 +720,15 @@ class Testbed(object):
     self._register_stub(FILES_SERVICE_NAME, stub)
 
   def init_images_stub(self, enable=True, **stub_kwargs):
-    """Enable the images stub.
+    """Enables the images stub.
 
-    The images service stub is only available in dev_appserver because
-    it uses the PIL library.
+    The images service stub is only available in dev_appserver because it uses
+    the PIL library.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-      stub_kwargs: Keyword arguments passed on to the service stub.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      **stub_kwargs: Keyword arguments passed on to the service stub.
     """
     if not enable:
       self._disable_stub(IMAGES_SERVICE_NAME)
@@ -587,11 +741,11 @@ class Testbed(object):
     self._register_stub(IMAGES_SERVICE_NAME, stub)
 
   def init_logservice_stub(self, enable=True):
-    """Enable the log service stub.
+    """Enables the log service stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-      service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
 
     Raises:
       StubNotSupportedError: The logservice stub is unvailable.
@@ -606,15 +760,16 @@ class Testbed(object):
     self._register_stub(LOG_SERVICE_NAME, stub)
 
   def init_mail_stub(self, enable=True, **stub_kw_args):
-    """Enable the mail stub.
+    """Enables the mail stub.
 
-    The email service stub is only available in dev_appserver because
-    it uses the subprocess module.
+    The email service stub is only available in dev_appserver because it uses
+    the `subprocess` module.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-      stub_kw_args: Keyword arguments passed on to the service stub.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      **stub_kw_args: Keyword arguments that are passed on to the service
+          stub.
     """
     if not enable:
       self._disable_stub(MAIL_SERVICE_NAME)
@@ -623,11 +778,11 @@ class Testbed(object):
     self._register_stub(MAIL_SERVICE_NAME, stub)
 
   def init_memcache_stub(self, enable=True):
-    """Enable the memcache stub.
+    """Enables the memcache stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(MEMCACHE_SERVICE_NAME)
@@ -636,34 +791,48 @@ class Testbed(object):
     self._register_stub(MEMCACHE_SERVICE_NAME, stub)
 
   def init_taskqueue_stub(self, enable=True, **stub_kw_args):
-    """Enable the taskqueue stub.
+    """Enables the taskqueue stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-      stub_kw_args: Keyword arguments passed on to the service stub.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      **stub_kw_args: Keyword arguments passed on to the service stub.
     """
+    if self._use_datastore_emulator:
+      self._disable_stub(TASKQUEUE_SERVICE_NAME)
+      delegate_stub = (
+          remote_api_stub.TaskqueueStubTestbedDelegate(self.rpc_server, '/'))
+      delegate_stub.SetUpStub(**stub_kw_args)
+      self._test_stub_map.RegisterStub(
+          TASKQUEUE_SERVICE_NAME, delegate_stub)
+      self._enabled_stubs[TASKQUEUE_SERVICE_NAME] = None
+      return
     if not enable:
       self._disable_stub(TASKQUEUE_SERVICE_NAME)
       return
     stub = taskqueue_stub.TaskQueueServiceStub(**stub_kw_args)
     self._register_stub(TASKQUEUE_SERVICE_NAME, stub)
 
-  def init_urlfetch_stub(self, enable=True):
-    """Enable the urlfetch stub.
+  def init_urlfetch_stub(self, enable=True, urlmatchers=None):
+    """Enables the urlfetch stub.
 
-    The urlfetch service stub uses the urllib module to make
-    requests. Because on appserver urllib also relies the urlfetch
-    infrastructure, using this stub will have no effect.
+    The urlfetch service stub uses the urllib module to make requests. On
+    appserver, urllib also relies the urlfetch infrastructure, so using this
+    stub will have no effect.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      urlmatchers: optional initial sequence of (matcher, fetcher) pairs to
+          populate urlmatchers_to_fetch_functions; matchers passed here, if
+          any, take precedence over default matchers dispatching GCS access.
     """
     if not enable:
       self._disable_stub(URLFETCH_SERVICE_NAME)
       return
     urlmatchers_to_fetch_functions = []
+    if urlmatchers:
+      urlmatchers_to_fetch_functions.extend(urlmatchers)
     urlmatchers_to_fetch_functions.extend(
         GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     stub = urlfetch_stub.URLFetchServiceStub(
@@ -671,12 +840,13 @@ class Testbed(object):
     self._register_stub(URLFETCH_SERVICE_NAME, stub)
 
   def init_user_stub(self, enable=True, **stub_kw_args):
-    """Enable the users stub.
+    """Enables the users stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-      stub_kw_args: Keyword arguments passed on to the service stub.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
+      **stub_kw_args: Keyword arguments that are passed on to the service
+          stub.
     """
     if not enable:
       self._disable_stub(USER_SERVICE_NAME)
@@ -685,11 +855,11 @@ class Testbed(object):
     self._register_stub(USER_SERVICE_NAME, stub)
 
   def init_xmpp_stub(self, enable=True):
-    """Enable the xmpp stub.
+    """Enables the xmpp stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(XMPP_SERVICE_NAME)
@@ -698,11 +868,11 @@ class Testbed(object):
     self._register_stub(XMPP_SERVICE_NAME, stub)
 
   def init_search_stub(self, enable=True):
-    """Enable the search stub.
+    """Enables the search stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(SEARCH_SERVICE_NAME)
@@ -713,11 +883,11 @@ class Testbed(object):
     self._register_stub(SEARCH_SERVICE_NAME, stub)
 
   def init_modules_stub(self, enable=True):
-    """Enable the modules stub.
+    """Enables the modules stub.
 
     Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     if not enable:
       self._disable_stub(MODULES_SERVICE_NAME)
@@ -727,18 +897,20 @@ class Testbed(object):
     self._register_stub(MODULES_SERVICE_NAME, stub)
 
   def _init_stub(self, service_name, *args, **kwargs):
-    """Enable a stub by service name.
+    """Enables a stub by service name.
 
     Args:
-      service_name: Name of service to initialize.  This name should be the
-        name used by the service stub.
+      service_name: Name of the service to initialize.  This name should be
+          the name used by the service stub.
+      *args: Arguments to be passed to the service stub.
+      **kwargs: Keyword arguments to be passed to the service stub.
 
       Additional arguments are passed along to the specific stub initializer.
 
     Raises:
       NotActivatedError: When this function is called before testbed is
-        activated or after it is deactivated.
-      StubNotSupportedError: When an unsupported service_name is provided.
+          activated or after it is deactivated.
+      StubNotSupportedError: When an unsupported `service_name` is provided.
     """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
@@ -751,11 +923,11 @@ class Testbed(object):
     method(*args, **kwargs)
 
   def init_all_stubs(self, enable=True):
-    """Enable all known testbed stubs.
+    """Enables all known testbed stubs.
 
     Args:
-      enable: True, if the fake services should be enabled, False if real
-              services should be disabled.
+      enable: `True` if the fake service should be enabled, or `False` if the
+          real service should be disabled.
     """
     for service_name in SUPPORTED_SERVICES:
       self._init_stub(service_name, enable)

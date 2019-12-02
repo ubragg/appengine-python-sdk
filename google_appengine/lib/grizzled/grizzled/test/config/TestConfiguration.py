@@ -1,15 +1,16 @@
-#!/usr/bin/python2.4
 # $Id: fa0cb7de413daf47d5326583abff1efa6e2eab94 $
 #
 # Nose program for testing grizzled.config.Configuration
+
+from __future__ import print_function
+from __future__ import unicode_literals
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.config import (Configuration, NoVariableError)
-from cStringIO import StringIO
+from io import StringIO
 import os
 import tempfile
 import atexit
@@ -111,7 +112,7 @@ class TestParser(object):
 
         atexit.register(unlinkTemp, tempPath)
         fp = os.fdopen(fd, "w")
-        print >> fp, '[section3]\nbaz = somevalue\n'
+        print('[section3]\nbaz = somevalue\n', file=fp)
         fp.close()
 
         s = '%s\n\n%%include "%s"\n' % (CONFIG2, tempPath)
@@ -177,3 +178,4 @@ var1 = ${bar}
             pass
         except:
             assert False, 'Unexpected exception'
+        

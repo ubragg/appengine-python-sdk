@@ -22,14 +22,31 @@ import collections
 import errno
 import httplib
 import logging
+import os
+import re
 import select
 import socket
+import sys
 import threading
 import time
 
 import google
+import ipaddr
+
+
+
+
+
+
+
+
+
+
+
+
 
 from cherrypy import wsgiserver
+
 
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import http_runtime_constants
@@ -58,6 +75,9 @@ _SECONDS_TO_MILLISECONDS = 1000
 
 
 _PORT_0_RETRIES = 2048
+
+# Per RFC2732, IPv6 addresses in URLs are enclosed in []
+_IPV6_HOST_RE = re.compile(r'^\[(.*)\]')
 
 
 class BindError(errors.Error):
@@ -275,19 +295,92 @@ class _SingleAddressWsgiServer(wsgiserver.CherryPyWSGIServer):
       return []
 
 
+class WsgiHostCheck(object):
+  """WSGI middleware for whitelisting incoming Host HTTP header values."""
+
+  def __init__(self, whitelisted_hosts, app):
+    self.whitelisted_hosts = set(whitelisted_hosts)
+    self.app = app
+
+  def __call__(self, environ, start_response):
+    http_host = environ.get('HTTP_HOST', '')
+
+    if not http_host:
+      # Only allow requests without a Host header for HTTP/1.0 requests
+      if environ.get('SERVER_PROTOCOL', '') == 'HTTP/1.0':
+        return self.app(environ, start_response)
+      else:
+        logging.info('No Host header set in request')
+        start_response('400 Bad Request', [])
+        return ['No Host header set in request.']
+
+    canonical_host = self._get_canonical_host_name(http_host)
+
+    if (self._is_local_host(canonical_host) or
+        canonical_host in self.whitelisted_hosts):
+      return self.app(environ, start_response)
+    else:
+      logging.error(
+          ('Request Host %s not whitelisted. Enabled hosts are %s'
+
+
+
+          ),
+          canonical_host, self.whitelisted_hosts)
+      start_response('400 Bad Request', [])
+      return [('Request host is not whitelist enabled for this server. '
+               'Please use the --host command-line flag to whitelist a '
+               'specific host (recommended) or use --enable_host_checking to '
+               'disable host checking. See the command-line flags help '
+               'text for more information. '
+
+
+
+              )]
+
+  def _is_local_host(self, host):
+    if host == 'localhost':
+      return True
+
+    try:
+      return ipaddr.IPAddress(host).is_loopback
+    except ValueError:
+      return False
+
+  def _get_canonical_host_name(self, host):
+    """Returns just the host name from a HTTP_HOST header value."""
+    ipv6_match = _IPV6_HOST_RE.match(host)
+    if ipv6_match:
+      return ipv6_match.group(1)
+    else:
+      return host.rsplit(':', 1)[0]
+
+
 class WsgiServer(object):
 
-  def __init__(self, host, app):
+  def __init__(self, host, app, ssl_certificate_paths=None, ssl_port=None):
     """Constructs a WsgiServer.
 
     Args:
       host: A (hostname, port) tuple containing the hostname and port to bind.
           The port can be 0 to allow any port.
       app: A WSGI app to handle requests.
+      ssl_certificate_paths: A ssl_utils.SSLCertificatePaths instance. This must
+        be specified in conjunction with ssl_port.
+      ssl_port: Port to bind to for https connections. This must be specified in
+        conjunction with ssl_certificate_paths.
+
+    Raises:
+      ValueError: If only one of ssl_certificate_paths or ssl_port is specified.
     """
+    if ((ssl_certificate_paths and not ssl_port) or
+        (ssl_port and not ssl_certificate_paths)):
+      raise ValueError('Must specify both ssl_certificate_paths and ssl_port')
     self.bind_addr = host
     self._app = app
     self._servers = []
+    self._ssl_certificate_paths = ssl_certificate_paths
+    self._ssl_port = ssl_port
 
   def start(self):
     """Starts the WsgiServer.
@@ -299,6 +392,37 @@ class WsgiServer(object):
       BindError: The address could not be bound.
     """
     host, port = self.bind_addr
+    host_ports = self._get_all_host_ports(host, port)
+
+    ssl_host_ports = self._get_all_host_ports(
+        host, self._ssl_port
+    ) if self.ssl_enabled else []
+    ssl_adapter = self._create_ssl_adapter() if self.ssl_enabled else None
+
+    if port != 0:
+      self._start_all_fixed_port(host_ports)
+      self._start_all_fixed_port(ssl_host_ports, ssl_adapter)
+      if not self._servers:
+        raise BindError('Unable to bind %s:%s' % self.bind_addr)
+    else:
+      for _ in range(_PORT_0_RETRIES):
+        if self._start_all_dynamic_port(
+            host_ports) and self._start_all_dynamic_port(
+                ssl_host_ports, ssl_adapter):
+          break
+      else:
+        raise BindError('Unable to find a consistent port for %s' % host)
+
+  def _get_all_host_ports(self, host, port):
+    """Uses socket.getaddrinfo to return all address families for the host/port.
+
+    Args:
+      host: str, hostname to bind to.
+      port: int, port to bind to.
+
+    Returns:
+      An itertable of (host, port) tuples.
+    """
     try:
       addrinfo = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
                                     socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
@@ -307,20 +431,19 @@ class WsgiServer(object):
       # Remove duplicate addresses caused by bad hosts file. Retain the
       # order to minimize behavior change (and so we don't have to tweak
       # unit tests to deal with different order).
-      host_ports = list(collections.OrderedDict.fromkeys(host_ports))
+      return list(collections.OrderedDict.fromkeys(host_ports))
     except socket.gaierror:
-      host_ports = [self.bind_addr]
+      return [(host, port)]
 
-    if port != 0:
-      self._start_all_fixed_port(host_ports)
-    else:
-      for _ in range(_PORT_0_RETRIES):
-        if self._start_all_dynamic_port(host_ports):
-          break
-      else:
-        raise BindError('Unable to find a consistent port for %s' % host)
+  def _create_ssl_adapter(self):
+    """Returns an ssl adapter for the wsgi server, or None if not using ssl."""
+    # Use the 'builtin' adapter instead of 'pyopenssl' to use python's
+    # standard ssl module instead of OpenSSL
+    return wsgiserver.get_ssl_adapter_class('builtin')(
+        certificate=self._ssl_certificate_paths.ssl_certificate_path,
+        private_key=self._ssl_certificate_paths.ssl_certificate_key_path)
 
-  def _start_all_fixed_port(self, host_ports):
+  def _start_all_fixed_port(self, host_ports, ssl_adapter=None):
     """Starts a server for each specified address with a fixed port.
 
     Does the work of actually trying to create a _SingleAddressWsgiServer for
@@ -328,6 +451,8 @@ class WsgiServer(object):
 
     Args:
       host_ports: An iterable of host, port tuples.
+      ssl_adapter: An wsgiserver.SSLAdapter instance. If specified, all
+        _SingleAddressWsgiServers will have their ssl_adapter set to this.
 
     Raises:
       BindError: The address could not be bound.
@@ -335,6 +460,8 @@ class WsgiServer(object):
     for host, port in host_ports:
       assert port != 0
       server = _SingleAddressWsgiServer((host, port), self._app)
+      if ssl_adapter:
+        server.ssl_adapter = ssl_adapter
       try:
         server.start()
       except BindError as bind_error:
@@ -348,10 +475,7 @@ class WsgiServer(object):
       else:
         self._servers.append(server)
 
-    if not self._servers:
-      raise BindError('Unable to bind %s:%s' % self.bind_addr)
-
-  def _start_all_dynamic_port(self, host_ports):
+  def _start_all_dynamic_port(self, host_ports, ssl_adapter=None):
     """Starts a server for each specified address with a dynamic port.
 
     Does the work of actually trying to create a _SingleAddressWsgiServer for
@@ -359,6 +483,8 @@ class WsgiServer(object):
 
     Args:
       host_ports: An iterable of host, port tuples.
+      ssl_adapter: An wsgiserver.SSLAdapter instance. If specified, all
+        _SingleAddressWsgiServers will have their ssl_adapter set to this.
 
     Returns:
       The list of all servers (also saved as self._servers). A non empty list
@@ -367,6 +493,8 @@ class WsgiServer(object):
     port = 0
     for host, _ in host_ports:
       server = _SingleAddressWsgiServer((host, port), self._app)
+      if ssl_adapter:
+        server.ssl_adapter = ssl_adapter
       try:
         server.start()
         if port == 0:
@@ -401,6 +529,11 @@ class WsgiServer(object):
   def port(self):
     """Returns the port that the server is bound to."""
     return self._servers[0].socket.getsockname()[1]
+
+  @property
+  def ssl_enabled(self):
+    """Returns whether this server is using SSL."""
+    return self._ssl_port and self._ssl_certificate_paths
 
   def set_app(self, app):
     """Sets the PEP-333 app to use to serve requests."""

@@ -66,15 +66,19 @@ A few caveats:
 
 
 
-import google
+import Cookie
+import datetime
+import hashlib
+import inspect
 import os
 import pickle
 import random
 import sys
 import thread
 import threading
+import google
 import yaml
-import hashlib
+
 
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -92,10 +96,17 @@ else:
   from google.appengine.ext.remote_api import remote_api_services
   from google.appengine.runtime import apiproxy_errors
 
+from google.appengine.api import api_base_pb
+from google.appengine.api import apiproxy_stub
+from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.taskqueue import taskqueue_stub
+from google.appengine.api.taskqueue import taskqueue_stub_service_pb
+from google.appengine.datastore import datastore_stub_util
 from google.appengine.tools import appengine_rpc
 
-
 _REQUEST_ID_HEADER = 'HTTP_X_APPENGINE_REQUEST_ID'
+_DEVAPPSERVER_LOGIN_COOKIE = 'test@example.com:True:'
+TIMEOUT_SECONDS = 10
 
 
 class Error(Exception):
@@ -177,20 +188,31 @@ class RemoteStub(object):
       server: An instance of a subclass of
         google.appengine.tools.appengine_rpc.AbstractRpcServer.
       path: The path to the handler this stub should send requests to.
+      _test_stub_map: If supplied, send RPC calls to stubs in this map instead
+        of over the wire.
     """
-
-
     self._server = server
     self._path = path
     self._test_stub_map = _test_stub_map
 
   def _PreHookHandler(self, service, call, request, response):
+    """Executed at the beginning of a MakeSyncCall method call."""
     pass
 
   def _PostHookHandler(self, service, call, request, response):
+    """Executed at the end of a MakeSyncCall method call."""
     pass
 
   def MakeSyncCall(self, service, call, request, response):
+    """The APIProxy entry point for a synchronous API call.
+
+    Args:
+      service: A string representing which service to call, e.g: 'datastore_v3'.
+      call: A string representing which function to call, e.g: 'put'.
+      request: A protocol message for the request, e.g: datastore_pb.PutRequest.
+      response: A protocol message for the response, e.g:
+        datastore_pb.PutResponse.
+    """
     self._PreHookHandler(service, call, request, response)
     try:
       test_stub = self._test_stub_map and self._test_stub_map.GetStub(service)
@@ -213,18 +235,18 @@ class RemoteStub(object):
     cls._local.request_id = request_id
 
   def _MakeRealSyncCall(self, service, call, request, response):
+    """Constructs, sends and receives remote_api.proto."""
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
     request_pb.set_request(request.Encode())
     if hasattr(self._local, 'request_id'):
-
-
       request_pb.set_request_id(self._local.request_id)
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()
     encoded_response = self._server.Send(self._path, encoded_request)
+
     response_pb.ParseFromString(encoded_response)
 
     if response_pb.has_application_error():
@@ -234,8 +256,8 @@ class RemoteStub(object):
     elif response_pb.has_exception():
       raise pickle.loads(response_pb.exception())
     elif response_pb.has_java_exception():
-      raise UnknownJavaServerError("An unknown error has occured in the "
-                                   "Java remote_api handler for this call.")
+      raise UnknownJavaServerError('An unknown error has occurred in the '
+                                   'Java remote_api handler for this call.')
     else:
       response.ParseFromString(response_pb.response())
 
@@ -545,6 +567,255 @@ class RemoteDatastoreStub(RemoteStub):
         'The remote datastore does not support index manipulation.')
 
 
+class DatastoreStubTestbedDelegate(RemoteStub):
+  """A stub for testbed calling datastore_v3 service in api_server."""
+
+  def __init__(self, server, path,
+               max_request_size=apiproxy_stub.MAX_REQUEST_SIZE,
+               emulator_port=None):
+    super(DatastoreStubTestbedDelegate, self).__init__(server, path)
+    self._emulator_port = emulator_port
+    self._error_dict = {}
+    self._error = None
+    self._error_rate = None
+    self._max_request_size = max_request_size
+
+  def _PreHookHandler(self, service, call, request, unused_response):
+    """Raises an error if request size is too large."""
+    if request.ByteSize() > self._max_request_size:
+      raise apiproxy_errors.RequestTooLargeError(
+          apiproxy_stub.REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (
+              service, call))
+
+  def SetConsistencyPolicy(self, consistency_policy):
+    """Set the job consistency policy of cloud datastore emulator.
+
+    Args:
+      consistency_policy: An instance of
+        datastore_stub_util.PseudoRandomHRConsistencyPolicy or
+        datastore_stub_util.MasterSlaveConsistencyPolicy.
+    """
+    datastore_stub_util.UpdateEmulatorConfig(
+        port=self._emulator_port, consistency_policy=consistency_policy)
+    if isinstance(consistency_policy,
+                  datastore_stub_util.PseudoRandomHRConsistencyPolicy):
+      consistency_policy.is_using_cloud_datastore_emulator = True
+      consistency_policy.emulator_port = self._emulator_port
+
+  def SetAutoIdPolicy(self, auto_id_policy):
+    """Set the auto id policy of cloud datastore emulator.
+
+    Args:
+      auto_id_policy: A string indicating how the emulator assigns auto IDs,
+        should be either datastore_stub_util.SCATTERED or
+        datastore_stub_util.SEQUENTIAL.
+    """
+    datastore_stub_util.UpdateEmulatorConfig(
+        port=self._emulator_port, auto_id_policy=auto_id_policy)
+
+  def SetTrusted(self, trusted):
+    """A dummy method for backward compatibility unittests.
+
+    Using emulator, the trusted bit is always True.
+
+    Args:
+      trusted: boolean. This bit indicates that the app calling the stub is
+        trusted. A trusted app can write to datastores of other apps.
+    """
+    pass
+
+  def __CheckError(self, call):
+
+    exception_type, frequency = self._error_dict.get(call, (None, None))
+    if exception_type and frequency:
+      if random.random() <= frequency:
+        raise exception_type
+
+    if self._error:
+      if random.random() <= self._error_rate:
+        raise self._error
+
+  def SetError(self, error, method=None, error_rate=1):
+    """Set an error condition that may be raised when calls are made to stub.
+
+    If a method is specified, the error will only apply to that call.
+    The error rate is applied to the method specified or all calls if
+    method is not set.
+
+    Args:
+      error: An instance of apiproxy_errors.Error or None for no error.
+      method: A string representing the method that the error will affect. e.g:
+        'RunQuery'.
+      error_rate: a number from [0, 1] that sets the chance of the error,
+        defaults to 1.
+    """
+    if not (error is None or isinstance(error, apiproxy_errors.Error)):
+      raise TypeError(
+          'error should be None or an instance of apiproxy_errors.Error')
+    if method and error:
+      self._error_dict[method] = error, error_rate
+    else:
+      self._error_rate = error_rate
+      self._error = error
+
+  def Clear(self):
+    """Clears the datastore, deletes all entities and queries."""
+    self._server.Send('/clear?service=datastore_v3')
+
+  def MakeSyncCall(self, service, call, request, response):
+    self.__CheckError(call)
+    super(DatastoreStubTestbedDelegate, self).MakeSyncCall(
+        service, call, request, response)
+
+
+class TaskqueueStubTestbedDelegate(RemoteStub):
+  """A stub for testbed calling taskqueue service in api_server.
+
+  Some tests directly call taskqueue_stub methods. When taskqueue service use
+  RemoteStub, we need to continue supporting these interfaces.
+  """
+
+  def __init__(self, server, path):
+    super(TaskqueueStubTestbedDelegate, self).__init__(server, path)
+    self.service = 'taskqueue'
+    self.get_filtered_tasks = self.GetFilteredTasks
+    self._queue_yaml_parser = None
+
+  def SetUpStub(self, **stub_kw_args):
+    self._root_path = None
+    self._RemoteSetUpStub(**stub_kw_args)
+
+  def GetQueues(self):
+    """Delegating TaskQueueServiceStub.GetQueues."""
+    request = api_base_pb.VoidProto()
+    response = taskqueue_stub_service_pb.GetQueuesResponse()
+    self.MakeSyncCall('taskqueue', 'GetQueues', request, response)
+    return taskqueue_stub.ConvertGetQueuesResponseToQueuesDicts(response)
+
+  def GetTasks(self, queue_name):
+    """Delegating TaskQueueServiceStub.GetTasks.
+
+    Args:
+      queue_name: String, the name of the queue to return tasks for.
+
+    Returns:
+      A list of dictionaries, where each dictionary contains one task's
+        attributes.
+    """
+    request = taskqueue_stub_service_pb.GetFilteredTasksRequest()
+    request.add_queue_names(queue_name)
+    response = taskqueue_stub_service_pb.GetFilteredTasksResponse()
+    self.MakeSyncCall('taskqueue', 'GetFilteredTasks', request, response)
+    res = []
+    for i, eta_delta in enumerate(response.eta_delta_list()):
+
+
+
+      task_dict = taskqueue_stub.QueryTasksResponseToDict(
+          queue_name, response.query_tasks_response().task(i),
+
+
+          datetime.datetime.now())
+      task_dict['eta_delta'] = eta_delta
+      res.append(task_dict)
+    return res
+
+  def DeleteTask(self, queue_name, task_name):
+    """Delegating TaskQueueServiceStub.DeleteTask.
+
+    Args:
+      queue_name: String, the name of the queue to delete the task from.
+      task_name: String, the name of the task to delete.
+    """
+    request = taskqueue_service_pb.TaskQueueDeleteRequest()
+    request.set_queue_name(queue_name)
+    request.add_task_name(task_name)
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'DeleteTask', request, response)
+
+  def FlushQueue(self, queue_name):
+    """Delegating TaskQueueServiceStub.FlushQueue.
+
+    Args:
+      queue_name: String, the name of the queue to flush.
+    """
+    request = taskqueue_stub_service_pb.FlushQueueRequest()
+    request.set_queue_name(queue_name)
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'FlushQueue', request, response)
+
+  def GetFilteredTasks(self, url='', name='', queue_names=()):
+    """Delegating TaskQueueServiceStub.get_filtered_tasks.
+
+    Args:
+      url: A string URL that represents the URL all returned tasks point at.
+      name: The string name of all returned tasks.
+      queue_names: A string queue_name, or a list of string queue names to
+        retrieve tasks from. If left blank this will get default to all
+        queues available.
+
+    Returns:
+      A list of taskqueue.Task objects.
+    """
+    request = taskqueue_stub_service_pb.GetFilteredTasksRequest()
+    request.set_url(url)
+    request.set_name(name)
+
+    if isinstance(queue_names, basestring):
+      queue_names = [queue_names]
+    map(request.add_queue_names, queue_names)
+    response = taskqueue_stub_service_pb.GetFilteredTasksResponse()
+    self.MakeSyncCall('taskqueue', 'GetFilteredTasks', request, response)
+
+    res = []
+    for i, eta_delta in enumerate(response.eta_delta_list()):
+
+      task_dict = taskqueue_stub.QueryTasksResponseToDict(
+
+          '', response.query_tasks_response().task(i),
+          datetime.datetime.now())
+      task_dict['eta_delta'] = eta_delta
+      res.append(taskqueue_stub.ConvertTaskDictToTaskObject(task_dict))
+    return res
+
+  @property
+  def queue_yaml_parser(self):
+    """Returns the queue_yaml_parser property."""
+    return self._queue_yaml_parser
+
+  @queue_yaml_parser.setter
+  def queue_yaml_parser(self, queue_yaml_parser):
+    """Sets the queue_yaml_parser as a property."""
+    if not callable(queue_yaml_parser):
+      raise TypeError(
+          'queue_yaml_parser should be callable. Received type: %s' %
+          type(queue_yaml_parser))
+    request = taskqueue_stub_service_pb.PatchQueueYamlParserRequest()
+    request.set_patched_return_value(pickle.dumps(queue_yaml_parser(
+        self._root_path)))
+    response = api_base_pb.VoidProto()
+    self._queue_yaml_parser = queue_yaml_parser
+    self.MakeSyncCall('taskqueue', 'PatchQueueYamlParser', request, response)
+
+  def _RemoteSetUpStub(self, **kwargs):
+    """Set up the stub in api_server with the parameters needed by user test.
+
+    Args:
+      **kwargs: Key word arguments that are passed to the service stub
+        constructor.
+    """
+    request = taskqueue_stub_service_pb.SetUpStubRequest()
+    init_args = inspect.getargspec(taskqueue_stub.TaskQueueServiceStub.__init__)
+    for field in set(init_args.args[1:]) - set(['request_data']):
+      if field in kwargs:
+        prefix = 'set' if field.startswith('_') else 'set_'
+        getattr(request, prefix + field)(kwargs[field])
+    if 'request_data' in kwargs:
+      request.set_request_data(pickle.dumps(kwargs['request_data']))
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'SetUpStub', request, response)
+
+
 ALL_SERVICES = set(remote_api_services.SERVICE_PB_MAP)
 
 
@@ -556,8 +827,10 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
     path: The path to the remote_api handler for your app
       (for example, '/_ah/remote_api').
     remote_token: Token to validate that the response was to this request.
+
   Returns:
     App ID as reported by the remote server.
+
   Raises:
     ConfigurationError: The server returned an invalid response.
   """
@@ -580,9 +853,14 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
   return app_info['app_id']
 
 
-def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
+def ConfigureRemoteApiFromServer(server,
+                                 path,
+                                 app_id,
+                                 services=None,
+                                 apiproxy=None,
                                  default_auth_domain=None,
-                                 use_remote_datastore=True):
+                                 use_remote_datastore=True,
+                                 **kwargs):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Args:
@@ -592,12 +870,15 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
     app_id: The app_id of your app, as declared in app.yaml.
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
+    apiproxy: An apiproxy_stub_map.APIProxyStubMap object. Supplied when there's
+      already a apiproxy stub map set up. One example use case is when testbed
+      configures remote_api for part of the APIs.
     default_auth_domain: The authentication domain to use by default.
     use_remote_datastore: Whether to use RemoteDatastoreStub instead of passing
       through datastore requests. RemoteDatastoreStub batches transactional
       datastore requests since, in production, datastore requires are scoped to
       a single request.
-
+    **kwargs: Additional kwargs to pass to RemoteStub constructor.
   Raises:
     urllib2.HTTPError: if app_id is not provided and there is an error while
       retrieving it.
@@ -614,12 +895,13 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
 
   os.environ['APPLICATION_ID'] = app_id
   os.environ.setdefault('AUTH_DOMAIN', default_auth_domain or 'gmail.com')
-  apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
+  if not apiproxy:
+    apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
   if 'datastore_v3' in services and use_remote_datastore:
     services.remove('datastore_v3')
     datastore_stub = RemoteDatastoreStub(server, path)
     apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
-  stub = RemoteStub(server, path)
+  stub = RemoteStub(server, path, **kwargs)
   for service in services:
     apiproxy_stub_map.apiproxy.RegisterStub(service, stub)
 
@@ -716,14 +998,14 @@ def ConfigureRemoteApiForOAuth(
   try:
 
     from oauth2client import client
-  except ImportError, e:
+  except ImportError as e:
     raise ImportError('Use of OAuth credentials requires the '
                       'oauth2client module: %s' % e)
 
   try:
 
     from google.appengine.tools import appengine_rpc_httplib2
-  except ImportError, e:
+  except ImportError as e:
     raise ImportError('Use of OAuth credentials requires the '
                       'appengine_rpc_httplib2 module. %s' % e)
 
@@ -745,7 +1027,8 @@ def ConfigureRemoteApiForOAuth(
             _OAUTH_SCOPES)
     else:
       credentials = client.GoogleCredentials.get_application_default()
-      credentials = credentials.create_scoped(_OAUTH_SCOPES)
+      if credentials and credentials.create_scoped_required():
+        credentials = credentials.create_scoped(_OAUTH_SCOPES)
 
 
     oauth2_parameters = (
@@ -777,10 +1060,12 @@ def ConfigureRemoteApi(app_id,
                        rtok=None,
                        secure=False,
                        services=None,
+                       apiproxy=None,
                        default_auth_domain=None,
                        save_cookies=False,
                        auth_tries=3,
-                       use_remote_datastore=True):
+                       use_remote_datastore=True,
+                       **kwargs):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
@@ -810,6 +1095,9 @@ def ConfigureRemoteApi(app_id,
     secure: Use SSL when communicating with the server.
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
+    apiproxy: An apiproxy_stub_map.APIProxyStubMap object. Supplied when there's
+      already a apiproxy stub map set up. One example use case is when testbed
+      configures remote_api for part of the APIs.
     default_auth_domain: The authentication domain to use by default.
     save_cookies: Forwarded to rpc_server_factory function.
     auth_tries: Number of attempts to make to authenticate.
@@ -817,7 +1105,7 @@ def ConfigureRemoteApi(app_id,
       through datastore requests. RemoteDatastoreStub batches transactional
       datastore requests since, in production, datastore requires are scoped to
       a single request.
-
+    **kwargs: Additional kwargs to pass to ConfigureRemoteApiFromServer.
   Returns:
     server, the server created by rpc_server_factory, which may be useful for
       calling the application directly.
@@ -831,15 +1119,28 @@ def ConfigureRemoteApi(app_id,
     raise ConfigurationError('app_id or servername required')
   if not servername:
     servername = '%s.appspot.com' % (app_id,)
+  extra_headers = {}
+  if servername.startswith('localhost'):
+
+
+
+
+
+    cookie = Cookie.SimpleCookie()
+    cookie['dev_appserver_login'] = _DEVAPPSERVER_LOGIN_COOKIE
+    extra_headers['COOKIE'] = cookie['dev_appserver_login'].OutputString()
   server = rpc_server_factory(
       servername, auth_func, GetUserAgent(), GetSourceName(),
-      save_cookies=save_cookies, auth_tries=auth_tries, debug_data=False,
-      secure=secure)
+      extra_headers=extra_headers, save_cookies=save_cookies,
+      auth_tries=auth_tries, debug_data=False, secure=secure)
   if not app_id:
     app_id = GetRemoteAppIdFromServer(server, path, rtok)
 
-  ConfigureRemoteApiFromServer(server, path, app_id, services,
-                               default_auth_domain, use_remote_datastore)
+  ConfigureRemoteApiFromServer(
+      server, path, app_id, services=services, apiproxy=apiproxy,
+      default_auth_domain=default_auth_domain,
+      use_remote_datastore=use_remote_datastore,
+      **kwargs)
   return server
 
 

@@ -18,11 +18,14 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -33,6 +36,7 @@ else:
 
 from google.appengine.base.capabilities_pb import *
 import google.appengine.base.capabilities_pb
+google_dot_apphosting_dot_base_dot_capabilities__pb = __import__('google.appengine.base.capabilities_pb', {}, {}, [''])
 class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
   has_package_ = 0
   package_ = ""
@@ -89,8 +93,8 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_package()): self.set_package(x.package())
-    for i in xrange(x.capability_size()): self.add_capability(x.capability(i))
-    for i in xrange(x.call_size()): self.add_call(x.call(i))
+    for i in range(x.capability_size()): self.add_capability(x.capability(i))
+    for i in range(x.call_size()): self.add_call(x.call(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -116,9 +120,9 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.package_))
     n += 1 * len(self.capability_)
-    for i in xrange(len(self.capability_)): n += self.lengthString(len(self.capability_[i]))
+    for i in range(len(self.capability_)): n += self.lengthString(len(self.capability_[i]))
     n += 1 * len(self.call_)
-    for i in xrange(len(self.call_)): n += self.lengthString(len(self.call_[i]))
+    for i in range(len(self.call_)): n += self.lengthString(len(self.call_[i]))
     return n + 1
 
   def ByteSizePartial(self):
@@ -127,9 +131,9 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.package_))
     n += 1 * len(self.capability_)
-    for i in xrange(len(self.capability_)): n += self.lengthString(len(self.capability_[i]))
+    for i in range(len(self.capability_)): n += self.lengthString(len(self.capability_[i]))
     n += 1 * len(self.call_)
-    for i in xrange(len(self.call_)): n += self.lengthString(len(self.call_[i]))
+    for i in range(len(self.call_)): n += self.lengthString(len(self.call_[i]))
     return n
 
   def Clear(self):
@@ -140,10 +144,10 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.package_)
-    for i in xrange(len(self.capability_)):
+    for i in range(len(self.capability_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.capability_[i])
-    for i in xrange(len(self.call_)):
+    for i in range(len(self.call_)):
       out.putVarInt32(26)
       out.putPrefixedString(self.call_[i])
 
@@ -151,10 +155,10 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_package_):
       out.putVarInt32(10)
       out.putPrefixedString(self.package_)
-    for i in xrange(len(self.capability_)):
+    for i in range(len(self.capability_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.capability_[i])
-    for i in xrange(len(self.call_)):
+    for i in range(len(self.call_)):
       out.putVarInt32(26)
       out.putPrefixedString(self.call_[i])
 
@@ -172,7 +176,7 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -195,7 +199,7 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpackage = 1
   kcapability = 2
@@ -286,7 +290,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     return self.config_[i]
 
   def add_config(self):
-    x = CapabilityConfig()
+    x = google.appengine.base.capabilities_pb.CapabilityConfig()
     self.config_.append(x)
     return x
 
@@ -297,7 +301,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_summary_status()): self.set_summary_status(x.summary_status())
     if (x.has_time_until_scheduled()): self.set_time_until_scheduled(x.time_until_scheduled())
-    for i in xrange(x.config_size()): self.add_config().CopyFrom(x.config(i))
+    for i in range(x.config_size()): self.add_config().CopyFrom(x.config(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -321,7 +325,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_summary_status_): n += 1 + self.lengthVarInt64(self.summary_status_)
     if (self.has_time_until_scheduled_): n += 1 + self.lengthVarInt64(self.time_until_scheduled_)
     n += 1 * len(self.config_)
-    for i in xrange(len(self.config_)): n += self.lengthString(self.config_[i].ByteSize())
+    for i in range(len(self.config_)): n += self.lengthString(self.config_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
@@ -329,7 +333,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_summary_status_): n += 1 + self.lengthVarInt64(self.summary_status_)
     if (self.has_time_until_scheduled_): n += 1 + self.lengthVarInt64(self.time_until_scheduled_)
     n += 1 * len(self.config_)
-    for i in xrange(len(self.config_)): n += self.lengthString(self.config_[i].ByteSizePartial())
+    for i in range(len(self.config_)): n += self.lengthString(self.config_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -344,7 +348,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_time_until_scheduled_):
       out.putVarInt32(16)
       out.putVarInt64(self.time_until_scheduled_)
-    for i in xrange(len(self.config_)):
+    for i in range(len(self.config_)):
       out.putVarInt32(26)
       out.putVarInt32(self.config_[i].ByteSize())
       self.config_[i].OutputUnchecked(out)
@@ -356,7 +360,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_time_until_scheduled_):
       out.putVarInt32(16)
       out.putVarInt64(self.time_until_scheduled_)
-    for i in xrange(len(self.config_)):
+    for i in range(len(self.config_)):
       out.putVarInt32(26)
       out.putVarInt32(self.config_[i].ByteSizePartial())
       self.config_[i].OutputPartial(out)
@@ -378,7 +382,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -398,7 +402,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksummary_status = 1
   ktime_until_scheduled = 2

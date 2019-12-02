@@ -14,7 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Contains some functions that come in handy with XML parsing."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 
 def GetTag(node):
@@ -42,9 +47,14 @@ def GetChildNodeText(node, child_tag, default=''):
   """Finds child xml node with desired tag and returns its text."""
   for child in node.getchildren():
     if GetTag(child) == child_tag:
-
-      return child.text or default
+      return GetNodeText(child) or default
   return default
+
+
+def GetNodeText(node):
+  """Returns the node text after stripping whitespace."""
+
+  return node.text.strip() if node.text else ''
 
 
 def GetNodes(node, match_tag):

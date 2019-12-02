@@ -72,11 +72,9 @@ if normal_environment:
   from google.appengine.api import datastore_types
   from google.appengine.api import memcache
   from google.appengine.api import namespace_manager
-  from google.appengine.api import prospective_search
   from google.appengine.api import taskqueue
   from google.appengine.api import urlfetch
   from google.appengine.api import users
-  from google.appengine.api.prospective_search import prospective_search_pb
   from google.appengine.datastore import datastore_pbs
   from google.appengine.datastore import datastore_query
   from google.appengine.datastore import datastore_rpc
@@ -88,9 +86,17 @@ if normal_environment:
   from google.appengine.ext import db
   from google.appengine.ext import gql
   try:
+    # For the python-compat runtime.
     from google.appengine.ext.vmruntime import callback
   except ImportError:
-    callback = None
+    # For the python 2.7 runtime.
+    try:
+      from google.appengine.runtime import apiproxy as callback
+      # Python 2.5 and dev_appserver is not supported.
+      if not hasattr(callback, 'SetRequestEndCallback'):
+        callback = None
+    except ImportError:
+      callback = None
   from google.appengine.runtime import apiproxy_errors
   from google.net.proto import ProtocolBuffer
 else:
@@ -115,9 +121,3 @@ else:
   from google3.apphosting.ext.vmruntime import callback
   from google3.apphosting.runtime import apiproxy_errors
   from google3.net.proto import ProtocolBuffer
-  # Prospective search is optional.
-  try:
-    from google3.apphosting.api import prospective_search
-    from google3.apphosting.api.prospective_search import prospective_search_pb
-  except ImportError:
-    pass

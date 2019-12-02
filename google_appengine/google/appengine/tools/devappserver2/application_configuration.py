@@ -24,7 +24,6 @@ import datetime
 import errno
 import logging
 import os
-import os.path
 import random
 import string
 import threading
@@ -36,12 +35,13 @@ from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
 from google.appengine.client.services import port_manager
 from google.appengine.tools import app_engine_web_xml_parser
-from google.appengine.tools import java_quickstart
 from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import web_xml_parser
-from google.appengine.tools import xml_parser_utils
 from google.appengine.tools import yaml_translator
+from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import errors
+from google.appengine.tools.devappserver2.java import java_dir
+
 
 # Constants passed to functions registered with
 # ModuleConfiguration.add_change_callback.
@@ -52,6 +52,13 @@ INBOUND_SERVICES_CHANGED = 4
 ENV_VARIABLES_CHANGED = 5
 ERROR_HANDLERS_CHANGED = 6
 NOBUILD_FILES_CHANGED = 7
+
+# entrypoint changes are needed for modern runtimes(at least Python3).
+# For Python3, adding/removing entrypoint can trigger re-creation of the local
+# virtualenv.
+ENTRYPOINT_ADDED = 8
+ENTRYPOINT_CHANGED = 9  # changes from a non-empty value to non-empty value
+ENTRYPOINT_REMOVED = 10
 
 
 
@@ -71,8 +78,7 @@ _HEALTH_CHECK_DEFAULTS = {
 
 def java_supported():
   """True if this SDK supports running Java apps in the dev appserver."""
-  java_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'java')
-  return os.path.isdir(java_dir)
+  return os.path.isdir(java_dir.get_java_dir())
 
 
 class ModuleConfiguration(object):
@@ -92,11 +98,12 @@ class ModuleConfiguration(object):
       ('runtime', 'runtime'),
       ('threadsafe', 'threadsafe'),
       ('module', 'module_name'),
-      ('basic_scaling', 'basic_scaling'),
-      ('manual_scaling', 'manual_scaling'),
-      ('automatic_scaling', 'automatic_scaling')]
+      ('basic_scaling', 'basic_scaling_config'),
+      ('manual_scaling', 'manual_scaling_config'),
+      ('automatic_scaling', 'automatic_scaling_config')]
 
-  def __init__(self, config_path, app_id=None):
+  def __init__(self, config_path, app_id=None, runtime=None,
+               env_variables=None):
     """Initializer for ModuleConfiguration.
 
     Args:
@@ -104,10 +111,16 @@ class ModuleConfiguration(object):
           containing the configuration for this module.
       app_id: A string that is the application id, or None if the application id
           from the yaml or xml file should be used.
+      runtime: A string that is the runtime to use, or None if the runtime
+          from the yaml or xml file should be used.
+      env_variables: A dictionary that is the environment variables passed by
+          flags.
 
     Raises:
       errors.DockerfileError: Raised if a user supplied a Dockerfile and a
         non-custom runtime.
+      errors.InvalidAppConfigError: Raised if a user select python
+        vanilla runtime.
     """
     self._config_path = config_path
     self._forced_app_id = app_id
@@ -126,23 +139,39 @@ class ModuleConfiguration(object):
     self._app_info_external, files_to_check = self._parse_configuration(
         self._config_path)
 
-    # TODO: As in AppengineApiClient._CreateVersionResource,
-    # add deprecation warnings and remove this code
-    if self._app_info_external.service:
-      self._app_info_external.module = self._app_info_external.service
+    # This if-statement is necessary because of following corner case
+    # appinfo.EnvironmentVariables.Merge({}, None) returns None
+    if env_variables:
+      merged_env_variables = appinfo.EnvironmentVariables.Merge(
+          self._app_info_external.env_variables, env_variables)
+      self._app_info_external.env_variables = merged_env_variables
 
     self._mtimes = self._get_mtimes(files_to_check)
     self._application = '%s~%s' % (self.partition,
                                    self.application_external_name)
     self._api_version = self._app_info_external.api_version
     self._module_name = self._app_info_external.module
+    self._main = self._app_info_external.main
     self._version = self._app_info_external.version
     self._threadsafe = self._app_info_external.threadsafe
-    self._basic_scaling = self._app_info_external.basic_scaling
-    self._manual_scaling = self._app_info_external.manual_scaling
-    self._automatic_scaling = self._app_info_external.automatic_scaling
-    self._runtime = self._app_info_external.runtime
+    self._basic_scaling_config = self._app_info_external.basic_scaling
+    self._manual_scaling_config = self._app_info_external.manual_scaling
+    self._automatic_scaling_config = self._app_info_external.automatic_scaling
+    self._runtime = runtime or self._app_info_external.runtime
     self._effective_runtime = self._app_info_external.GetEffectiveRuntime()
+
+    if self._runtime == 'python-compat':
+      logging.warn(
+          'The python-compat runtime is deprecated, please consider upgrading '
+          'your application to use the Flexible runtime. See '
+          'https://cloud.google.com/appengine/docs/flexible/python/upgrading '
+          'for more details.')
+    elif self._runtime == 'vm':
+      logging.warn(
+          'The Managed VMs runtime is deprecated, please consider migrating '
+          'your application to use the Flexible runtime. See '
+          'https://cloud.google.com/appengine/docs/flexible/python/migrating '
+          'for more details.')
 
     dockerfile_dir = os.path.dirname(self._config_path)
     dockerfile = os.path.join(dockerfile_dir, 'Dockerfile')
@@ -168,6 +197,12 @@ class ModuleConfiguration(object):
 
     self._forwarded_ports = {}
     if self.runtime == 'vm':
+      # Avoid using python-vanilla with dev_appserver
+      if 'python' == self._effective_runtime:
+        raise errors.InvalidAppConfigError('Under dev_appserver, '
+                                           'runtime:python is not supported '
+                                           'for Flexible environment.')
+
       # Java uses an api_version of 1.0 where everyone else uses just 1.
       # That doesn't matter much elsewhere, but it does pain us with VMs
       # because they recognize api_version 1 not 1.0.
@@ -203,6 +238,30 @@ class ModuleConfiguration(object):
 
     self._health_check = _set_health_check_defaults(health_check)
 
+    # Configure the _is_{typeof}_scaling, _instance_class, and _memory_limit
+    # attributes.
+    self._is_manual_scaling = None
+    self._is_basic_scaling = None
+    self._is_automatic_scaling = None
+    self._instance_class = self._app_info_external.instance_class
+    if self._manual_scaling_config or self._runtime == 'vm':
+      # TODO: Remove this 'or' when we support auto-scaled VMs.
+      self._is_manual_scaling = True
+      self._instance_class = (
+          self._instance_class or
+          constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS)
+    elif self._basic_scaling_config:
+      self._is_basic_scaling = True
+      self._instance_class = (
+          self._instance_class or
+          constants.DEFAULT_BASIC_SCALING_INSTANCE_CLASS)
+    else:
+      self._is_automatic_scaling = True
+      self._instance_class = (
+          self._instance_class or constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS)
+    self._memory_limit = constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+        self._instance_class)
+
   @property
   def application_root(self):
     """The directory containing the application e.g. "/home/user/myapp"."""
@@ -229,6 +288,10 @@ class ModuleConfiguration(object):
     return self._module_name or appinfo.DEFAULT_MODULE
 
   @property
+  def main(self):
+    return self._main or ''
+
+  @property
   def major_version(self):
     return self._version
 
@@ -253,6 +316,10 @@ class ModuleConfiguration(object):
     return self._app_info_external.env
 
   @property
+  def entrypoint(self):
+    return self._app_info_external.entrypoint
+
+  @property
   def runtime(self):
     return self._runtime
 
@@ -274,16 +341,28 @@ class ModuleConfiguration(object):
     return self._threadsafe
 
   @property
-  def basic_scaling(self):
-    return self._basic_scaling
+  def basic_scaling_config(self):
+    return self._basic_scaling_config
 
   @property
-  def manual_scaling(self):
-    return self._manual_scaling
+  def manual_scaling_config(self):
+    return self._manual_scaling_config
 
   @property
-  def automatic_scaling(self):
-    return self._automatic_scaling
+  def automatic_scaling_config(self):
+    return self._automatic_scaling_config
+
+  @property
+  def is_basic_scaling(self):
+    return self._is_basic_scaling
+
+  @property
+  def is_manual_scaling(self):
+    return self._is_manual_scaling
+
+  @property
+  def is_automatic_scaling(self):
+    return self._is_automatic_scaling
 
   @property
   def normalized_libraries(self):
@@ -310,6 +389,14 @@ class ModuleConfiguration(object):
     return self._app_info_external.inbound_services
 
   @property
+  def instance_class(self):
+    return self._instance_class
+
+  @property
+  def memory_limit(self):
+    return self._memory_limit
+
+  @property
   def env_variables(self):
     return self._app_info_external.env_variables
 
@@ -325,11 +412,15 @@ class ModuleConfiguration(object):
   def health_check(self):
     return self._health_check
 
+  @property
+  def default_expiration(self):
+    return self._app_info_external.default_expiration
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     new_mtimes = self._get_mtimes(self._mtimes.keys())
@@ -339,7 +430,7 @@ class ModuleConfiguration(object):
     try:
       app_info_external, files_to_check = self._parse_configuration(
           self._config_path)
-    except Exception, e:
+    except Exception, e:  # pylint: disable=broad-except
       failure_message = str(e)
       if failure_message != self._last_failure_message:
         logging.error('Configuration is not valid: %s', failure_message)
@@ -385,6 +476,15 @@ class ModuleConfiguration(object):
       changes.add(ENV_VARIABLES_CHANGED)
     if app_info_external.error_handlers != self.error_handlers:
       changes.add(ERROR_HANDLERS_CHANGED)
+
+    # identify what kind of change happened to entrypoint
+    if app_info_external.entrypoint != self.entrypoint:
+      if app_info_external.entrypoint and self.entrypoint:
+        changes.add(ENTRYPOINT_CHANGED)
+      elif app_info_external.entrypoint:
+        changes.add(ENTRYPOINT_ADDED)
+      else:
+        changes.add(ENTRYPOINT_REMOVED)
 
     self._app_info_external = app_info_external
     if changes:
@@ -451,20 +551,10 @@ class ModuleConfiguration(object):
         app_engine_web_xml_parser.AppEngineWebXmlParser().ProcessXml(
             app_engine_web_xml_str))
 
-    quickstart = xml_parser_utils.BooleanValue(
-        app_engine_web_xml.beta_settings.get('java_quickstart', 'false'))
-
     web_inf_dir = os.path.dirname(app_engine_web_xml_path)
-    if quickstart:
-      app_dir = os.path.dirname(web_inf_dir)
-      web_xml_str, web_xml_path = java_quickstart.quickstart_generator(app_dir)
-      webdefault_xml_str = java_quickstart.get_webdefault_xml()
-      web_xml_str = java_quickstart.remove_mappings(
-          web_xml_str, webdefault_xml_str)
-    else:
-      web_xml_path = os.path.join(web_inf_dir, 'web.xml')
-      with open(web_xml_path) as f:
-        web_xml_str = f.read()
+    web_xml_path = os.path.join(web_inf_dir, 'web.xml')
+    with open(web_xml_path) as f:
+      web_xml_str = f.read()
 
     has_jsps = False
     for _, _, filenames in os.walk(self.application_root):
@@ -523,7 +613,9 @@ def _set_health_check_defaults(health_check):
 class BackendsConfiguration(object):
   """Stores configuration information for a backends.yaml file."""
 
-  def __init__(self, app_config_path, backend_config_path, app_id=None):
+  def __init__(
+      self, app_config_path, backend_config_path, app_id=None, runtime=None,
+      env_variables=None):
     """Initializer for BackendsConfiguration.
 
     Args:
@@ -533,10 +625,14 @@ class BackendsConfiguration(object):
           backends.yaml file containing the configuration for backends.
       app_id: A string that is the application id, or None if the application id
           from the yaml or xml file should be used.
+      runtime: A string that is the runtime to use, or None if the runtime
+          from the yaml or xml file should be used.
+      env_variables: A dictionary that is the environment variables passed by
+          flags.
     """
     self._update_lock = threading.RLock()
     self._base_module_configuration = ModuleConfiguration(
-        app_config_path, app_id)
+        app_config_path, app_id, runtime, env_variables)
     backend_info_external = self._parse_configuration(
         backend_config_path)
 
@@ -566,7 +662,7 @@ class BackendsConfiguration(object):
           updates.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     with self._update_lock:
@@ -601,12 +697,12 @@ class BackendConfiguration(object):
     self._backend_entry = backend_entry
 
     if backend_entry.dynamic:
-      self._basic_scaling = appinfo.BasicScaling(
+      self._basic_scaling_config = appinfo.BasicScaling(
           max_instances=backend_entry.instances or 1)
-      self._manual_scaling = None
+      self._manual_scaling_config = None
     else:
-      self._basic_scaling = None
-      self._manual_scaling = appinfo.ManualScaling(
+      self._basic_scaling_config = None
+      self._manual_scaling_config = appinfo.ManualScaling(
           instances=backend_entry.instances or 1)
     self._minor_version_id = ''.join(random.choice(string.digits) for _ in
                                      range(18))
@@ -619,6 +715,10 @@ class BackendConfiguration(object):
   @property
   def application(self):
     return self._module_configuration.application
+
+  @property
+  def entrypoint(self):
+    return self._module_configuration.entrypoint
 
   @property
   def partition(self):
@@ -635,6 +735,10 @@ class BackendConfiguration(object):
   @property
   def module_name(self):
     return self._backend_entry.name
+
+  @property
+  def main(self):
+    return self._module_configuration.main
 
   @property
   def major_version(self):
@@ -672,16 +776,36 @@ class BackendConfiguration(object):
     return self._module_configuration.threadsafe
 
   @property
-  def basic_scaling(self):
-    return self._basic_scaling
+  def basic_scaling_config(self):
+    return self._basic_scaling_config
 
   @property
-  def manual_scaling(self):
-    return self._manual_scaling
+  def manual_scaling_config(self):
+    return self._manual_scaling_config
 
   @property
-  def automatic_scaling(self):
+  def automatic_scaling_config(self):
     return None
+
+  @property
+  def is_basic_scaling(self):
+    return bool(self._basic_scaling_config)
+
+  @property
+  def is_manual_scaling(self):
+    return bool(self._manual_scaling_config)
+
+  @property
+  def is_automatic_scaling(self):
+    return False
+
+  @property
+  def instance_class(self):
+    return self._module_configuration.instance_class
+
+  @property
+  def memory_limit(self):
+    return self._module_configuration.memory_limit
 
   @property
   def normalized_libraries(self):
@@ -728,11 +852,15 @@ class BackendConfiguration(object):
   def health_check(self):
     return self._module_configuration.health_check
 
+  @property
+  def default_expiration(self):
+    return self._module_configuration.default_expiration
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     changes = self._backends_configuration.check_for_updates(
@@ -764,13 +892,13 @@ class DispatchConfiguration(object):
       self._mtime = mtime
       try:
         dispatch_info_external = self._parse_configuration(self._config_path)
-      except Exception, e:
+      except Exception, e:  # pylint: disable=broad-except
         failure_message = str(e)
         logging.error('Configuration is not valid: %s', failure_message)
         return
       self._process_dispatch_entries(dispatch_info_external)
 
-  def _process_dispatch_entries(self, dispatch_info_external):
+  def _process_dispatch_entries(self, dispatch_info_external):  # pylint: disable=missing-docstring
     path_only_entries = []
     hostname_entries = []
     for entry in dispatch_info_external.dispatch:
@@ -794,7 +922,8 @@ class DispatchConfiguration(object):
 class ApplicationConfiguration(object):
   """Stores application configuration information."""
 
-  def __init__(self, config_paths, app_id=None):
+  def __init__(self, config_paths, app_id=None, runtime=None,
+               env_variables=None):
     """Initializer for ApplicationConfiguration.
 
     Args:
@@ -802,6 +931,11 @@ class ApplicationConfiguration(object):
           or to directories containing them.
       app_id: A string that is the application id, or None if the application id
           from the yaml or xml file should be used.
+      runtime: A string that is the runtime to use, or None if the runtime
+          from the yaml or xml file should be used.
+      env_variables: A dictionary that is the environment variables passed by
+          flags.
+
     Raises:
       InvalidAppConfigError: On invalid configuration.
     """
@@ -818,9 +952,9 @@ class ApplicationConfiguration(object):
         # TODO: Reuse the ModuleConfiguration created for the app.yaml
         # instead of creating another one for the same file.
         app_yaml = config_path.replace('backends.y', 'app.y')
-        self.modules.extend(
-            BackendsConfiguration(
-                app_yaml, config_path, app_id).get_backend_configurations())
+        backends = BackendsConfiguration(app_yaml, config_path, app_id, runtime,
+                                         env_variables)
+        self.modules.extend(backends.get_backend_configurations())
       elif (config_path.endswith('dispatch.yaml') or
             config_path.endswith('dispatch.yml')):
         if self.dispatch:
@@ -828,7 +962,9 @@ class ApplicationConfiguration(object):
               'Multiple dispatch.yaml files specified')
         self.dispatch = DispatchConfiguration(config_path)
       else:
-        module_configuration = ModuleConfiguration(config_path, app_id)
+        module_configuration = ModuleConfiguration(config_path, app_id, runtime,
+                                                   env_variables)
+
         self.modules.append(module_configuration)
     application_ids = set(module.application
                           for module in self.modules)
@@ -913,6 +1049,19 @@ class ApplicationConfiguration(object):
     return app_yamls + backend_yamls
 
   def _config_files_from_web_inf_dir(self, web_inf):
+    """Return a list of the configuration files found in a WEB-INF directory.
+
+    We expect to find web.xml and application-web.xml in the directory.
+
+    Args:
+      web_inf: a string that is the path to a WEB-INF directory.
+
+    Raises:
+      AppConfigNotFoundError: If the xml files are not found.
+
+    Returns:
+      A list of strings that are file paths.
+    """
     required = ['appengine-web.xml', 'web.xml']
     missing = [f for f in required
                if not os.path.exists(os.path.join(web_inf, f))]
@@ -924,6 +1073,21 @@ class ApplicationConfiguration(object):
 
   @staticmethod
   def _files_in_dir_matching(dir_path, names):
+    """Return a single-element list containing an absolute path to a file.
+
+    The method accepts a list of filenames. If multiple are found, an error is
+    raised. If only one match is found, the full path to this file is returned.
+
+    Args:
+      dir_path: A string base directory for searching for filenames.
+      names: A list of string relative file names to seek within dir_path.
+
+    Raises:
+      InvalidAppConfigError: If the xml files are not found.
+
+    Returns:
+      A single-element list containing a full path to a file.
+    """
     abs_names = [os.path.join(dir_path, name) for name in names]
     files = [f for f in abs_names if os.path.exists(f)]
     if len(files) > 1:

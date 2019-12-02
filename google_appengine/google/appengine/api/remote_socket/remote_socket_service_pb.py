@@ -18,11 +18,14 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -425,7 +428,7 @@ class RemoteSocketServiceError(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -437,7 +440,7 @@ class RemoteSocketServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksystem_error = 1
   kerror_detail = 2
@@ -589,7 +592,7 @@ class AddressPort(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -602,7 +605,7 @@ class AddressPort(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kport = 1
   kpacked_address = 2
@@ -672,7 +675,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.socket_options_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def family(self): return self.family_
@@ -812,7 +815,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_family()): self.set_family(x.family())
     if (x.has_protocol()): self.set_protocol(x.protocol())
-    for i in xrange(x.socket_options_size()): self.add_socket_options().CopyFrom(x.socket_options(i))
+    for i in range(x.socket_options_size()): self.add_socket_options().CopyFrom(x.socket_options(i))
     if (x.has_proxy_external_ip()): self.mutable_proxy_external_ip().MergeFrom(x.proxy_external_ip())
     if (x.has_listen_backlog()): self.set_listen_backlog(x.listen_backlog())
     if (x.has_remote_ip()): self.mutable_remote_ip().MergeFrom(x.remote_ip())
@@ -864,7 +867,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.family_)
     n += self.lengthVarInt64(self.protocol_)
     n += 1 * len(self.socket_options_)
-    for i in xrange(len(self.socket_options_)): n += self.lengthString(self.socket_options_[i].ByteSize())
+    for i in range(len(self.socket_options_)): n += self.lengthString(self.socket_options_[i].ByteSize())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSize())
     if (self.has_listen_backlog_): n += 1 + self.lengthVarInt64(self.listen_backlog_)
     if (self.has_remote_ip_): n += 1 + self.lengthString(self.remote_ip_.ByteSize())
@@ -882,7 +885,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthVarInt64(self.protocol_)
     n += 1 * len(self.socket_options_)
-    for i in xrange(len(self.socket_options_)): n += self.lengthString(self.socket_options_[i].ByteSizePartial())
+    for i in range(len(self.socket_options_)): n += self.lengthString(self.socket_options_[i].ByteSizePartial())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSizePartial())
     if (self.has_listen_backlog_): n += 1 + self.lengthVarInt64(self.listen_backlog_)
     if (self.has_remote_ip_): n += 1 + self.lengthString(self.remote_ip_.ByteSizePartial())
@@ -907,7 +910,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(self.family_)
     out.putVarInt32(16)
     out.putVarInt32(self.protocol_)
-    for i in xrange(len(self.socket_options_)):
+    for i in range(len(self.socket_options_)):
       out.putVarInt32(26)
       out.putVarInt32(self.socket_options_[i].ByteSize())
       self.socket_options_[i].OutputUnchecked(out)
@@ -939,7 +942,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_protocol_):
       out.putVarInt32(16)
       out.putVarInt32(self.protocol_)
-    for i in xrange(len(self.socket_options_)):
+    for i in range(len(self.socket_options_)):
       out.putVarInt32(26)
       out.putVarInt32(self.socket_options_[i].ByteSizePartial())
       self.socket_options_[i].OutputPartial(out)
@@ -1005,7 +1008,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1037,7 +1040,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfamily = 1
   kprotocol = 2
@@ -1086,11 +1089,13 @@ class CreateSocketReply(_ExtendableProtocolMessage):
   server_address_ = None
   has_proxy_external_ip_ = 0
   proxy_external_ip_ = None
+  has_gateway_address_ = 0
+  gateway_address_ = ""
 
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def socket_descriptor(self): return self.socket_descriptor_
@@ -1144,12 +1149,26 @@ class CreateSocketReply(_ExtendableProtocolMessage):
 
   def has_proxy_external_ip(self): return self.has_proxy_external_ip_
 
+  def gateway_address(self): return self.gateway_address_
+
+  def set_gateway_address(self, x):
+    self.has_gateway_address_ = 1
+    self.gateway_address_ = x
+
+  def clear_gateway_address(self):
+    if self.has_gateway_address_:
+      self.has_gateway_address_ = 0
+      self.gateway_address_ = ""
+
+  def has_gateway_address(self): return self.has_gateway_address_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_socket_descriptor()): self.set_socket_descriptor(x.socket_descriptor())
     if (x.has_server_address()): self.mutable_server_address().MergeFrom(x.server_address())
     if (x.has_proxy_external_ip()): self.mutable_proxy_external_ip().MergeFrom(x.proxy_external_ip())
+    if (x.has_gateway_address()): self.set_gateway_address(x.gateway_address())
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -1160,6 +1179,8 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if self.has_server_address_ and self.server_address_ != x.server_address_: return 0
     if self.has_proxy_external_ip_ != x.has_proxy_external_ip_: return 0
     if self.has_proxy_external_ip_ and self.proxy_external_ip_ != x.proxy_external_ip_: return 0
+    if self.has_gateway_address_ != x.has_gateway_address_: return 0
+    if self.has_gateway_address_ and self.gateway_address_ != x.gateway_address_: return 0
     if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
@@ -1174,6 +1195,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if (self.has_socket_descriptor_): n += 1 + self.lengthString(len(self.socket_descriptor_))
     if (self.has_server_address_): n += 1 + self.lengthString(self.server_address_.ByteSize())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSize())
+    if (self.has_gateway_address_): n += 1 + self.lengthString(len(self.gateway_address_))
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n
@@ -1183,6 +1205,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if (self.has_socket_descriptor_): n += 1 + self.lengthString(len(self.socket_descriptor_))
     if (self.has_server_address_): n += 1 + self.lengthString(self.server_address_.ByteSizePartial())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSizePartial())
+    if (self.has_gateway_address_): n += 1 + self.lengthString(len(self.gateway_address_))
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -1191,6 +1214,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     self.clear_socket_descriptor()
     self.clear_server_address()
     self.clear_proxy_external_ip()
+    self.clear_gateway_address()
     if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
@@ -1208,6 +1232,9 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       out.putVarInt32(34)
       out.putVarInt32(self.proxy_external_ip_.ByteSize())
       self.proxy_external_ip_.OutputUnchecked(out)
+    if (self.has_gateway_address_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.gateway_address_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
@@ -1226,6 +1253,9 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       out.putVarInt32(34)
       out.putVarInt32(self.proxy_external_ip_.ByteSizePartial())
       self.proxy_external_ip_.OutputPartial(out)
+    if (self.has_gateway_address_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.gateway_address_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
@@ -1247,13 +1277,16 @@ class CreateSocketReply(_ExtendableProtocolMessage):
         d.skip(length)
         self.mutable_proxy_external_ip().TryMerge(tmp)
         continue
+      if tt == 42:
+        self.set_gateway_address(d.getPrefixedString())
+        continue
       if _extension_runtime:
         if (1000 <= tt):
           self._ParseOneExtensionField(tt, d)
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1268,6 +1301,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       res+=prefix+"proxy_external_ip <\n"
       res+=self.proxy_external_ip_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_gateway_address_: res+=prefix+("gateway_address: %s\n" % self.DebugFormatString(self.gateway_address_))
     if _extension_runtime:
       res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
@@ -1276,25 +1310,28 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kserver_address = 3
   kproxy_external_ip = 4
+  kgateway_address = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "socket_descriptor",
     3: "server_address",
     4: "proxy_external_ip",
-  }, 4)
+    5: "gateway_address",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1407,7 +1444,7 @@ class BindRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1422,7 +1459,7 @@ class BindRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kproxy_external_ip = 2
@@ -1450,7 +1487,7 @@ class BindReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def proxy_external_ip(self):
@@ -1545,7 +1582,7 @@ class BindReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1563,7 +1600,7 @@ class BindReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kproxy_external_ip = 1
 
@@ -1652,7 +1689,7 @@ class GetSocketNameRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1663,7 +1700,7 @@ class GetSocketNameRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
 
@@ -1688,7 +1725,7 @@ class GetSocketNameReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def proxy_external_ip(self):
@@ -1783,7 +1820,7 @@ class GetSocketNameReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1801,7 +1838,7 @@ class GetSocketNameReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kproxy_external_ip = 2
 
@@ -1890,7 +1927,7 @@ class GetPeerNameRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1901,7 +1938,7 @@ class GetPeerNameRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
 
@@ -1926,7 +1963,7 @@ class GetPeerNameReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def peer_ip(self):
@@ -2021,7 +2058,7 @@ class GetPeerNameReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2039,7 +2076,7 @@ class GetPeerNameReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpeer_ip = 2
 
@@ -2282,7 +2319,7 @@ class SocketOption(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2295,7 +2332,7 @@ class SocketOption(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   klevel = 1
   koption = 2
@@ -2360,7 +2397,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_socket_descriptor()): self.set_socket_descriptor(x.socket_descriptor())
-    for i in xrange(x.options_size()): self.add_options().CopyFrom(x.options(i))
+    for i in range(x.options_size()): self.add_options().CopyFrom(x.options(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -2385,7 +2422,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.socket_descriptor_))
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -2394,7 +2431,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.socket_descriptor_))
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -2404,7 +2441,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.socket_descriptor_)
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSize())
       self.options_[i].OutputUnchecked(out)
@@ -2413,7 +2450,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_socket_descriptor_):
       out.putVarInt32(10)
       out.putPrefixedString(self.socket_descriptor_)
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSizePartial())
       self.options_[i].OutputPartial(out)
@@ -2432,7 +2469,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2451,7 +2488,7 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   koptions = 2
@@ -2532,7 +2569,7 @@ class SetSocketOptionsReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2546,7 +2583,7 @@ class SetSocketOptionsReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -2602,7 +2639,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_socket_descriptor()): self.set_socket_descriptor(x.socket_descriptor())
-    for i in xrange(x.options_size()): self.add_options().CopyFrom(x.options(i))
+    for i in range(x.options_size()): self.add_options().CopyFrom(x.options(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -2627,7 +2664,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.socket_descriptor_))
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -2636,7 +2673,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.socket_descriptor_))
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -2646,7 +2683,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.socket_descriptor_)
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSize())
       self.options_[i].OutputUnchecked(out)
@@ -2655,7 +2692,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_socket_descriptor_):
       out.putVarInt32(10)
       out.putPrefixedString(self.socket_descriptor_)
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSizePartial())
       self.options_[i].OutputPartial(out)
@@ -2674,7 +2711,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2693,7 +2730,7 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   koptions = 2
@@ -2741,7 +2778,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.options_size()): self.add_options().CopyFrom(x.options(i))
+    for i in range(x.options_size()): self.add_options().CopyFrom(x.options(i))
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -2761,7 +2798,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n
@@ -2769,7 +2806,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.options_)
-    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
+    for i in range(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -2782,7 +2819,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSize())
       self.options_[i].OutputUnchecked(out)
@@ -2793,7 +2830,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.options_)):
+    for i in range(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSizePartial())
       self.options_[i].OutputPartial(out)
@@ -2815,7 +2852,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -2837,7 +2874,7 @@ class GetSocketOptionsReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   koptions = 2
 
@@ -2992,7 +3029,7 @@ class ConnectRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3008,7 +3045,7 @@ class ConnectRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kremote_ip = 2
@@ -3039,7 +3076,7 @@ class ConnectReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def proxy_external_ip(self):
@@ -3134,7 +3171,7 @@ class ConnectReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3152,7 +3189,7 @@ class ConnectReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kproxy_external_ip = 1
 
@@ -3276,7 +3313,7 @@ class ListenRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3288,7 +3325,7 @@ class ListenRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kbacklog = 2
@@ -3369,7 +3406,7 @@ class ListenReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3383,7 +3420,7 @@ class ListenReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -3499,7 +3536,7 @@ class AcceptRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3511,7 +3548,7 @@ class AcceptRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   ktimeout_seconds = 2
@@ -3541,7 +3578,7 @@ class AcceptReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def new_socket_descriptor(self): return self.new_socket_descriptor_
@@ -3664,7 +3701,7 @@ class AcceptReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3683,7 +3720,7 @@ class AcceptReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   knew_socket_descriptor = 2
   kremote_address = 3
@@ -3860,7 +3897,7 @@ class ShutDownRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3873,7 +3910,7 @@ class ShutDownRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   khow = 2
@@ -3957,7 +3994,7 @@ class ShutDownReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -3971,7 +4008,7 @@ class ShutDownReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -4087,7 +4124,7 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4099,7 +4136,7 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   ksend_offset = 2
@@ -4180,7 +4217,7 @@ class CloseReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4194,7 +4231,7 @@ class CloseReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -4224,7 +4261,7 @@ class SendRequest(ProtocolBuffer.ProtocolMessage):
   timeout_seconds_ = -1.0
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def socket_descriptor(self): return self.socket_descriptor_
@@ -4453,7 +4490,7 @@ class SendRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4472,7 +4509,7 @@ class SendRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kdata = 2
@@ -4594,7 +4631,7 @@ class SendReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4609,7 +4646,7 @@ class SendReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdata_sent = 1
 
@@ -4806,7 +4843,7 @@ class ReceiveRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -4820,7 +4857,7 @@ class ReceiveRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   kdata_size = 2
@@ -4860,7 +4897,7 @@ class ReceiveReply(_ExtendableProtocolMessage):
   def __init__(self, contents=None):
     if _extension_runtime:
       self._extension_fields = {}
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def stream_offset(self): return self.stream_offset_
@@ -5039,7 +5076,7 @@ class ReceiveReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5060,7 +5097,7 @@ class ReceiveReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kstream_offset = 2
   kdata = 3
@@ -5265,7 +5302,7 @@ class PollEvent(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5278,7 +5315,7 @@ class PollEvent(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksocket_descriptor = 1
   krequested_events = 2
@@ -5342,7 +5379,7 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.events_size()): self.add_events().CopyFrom(x.events(i))
+    for i in range(x.events_size()): self.add_events().CopyFrom(x.events(i))
     if (x.has_timeout_seconds()): self.set_timeout_seconds(x.timeout_seconds())
 
   def Equals(self, x):
@@ -5363,14 +5400,14 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.events_)
-    for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSize())
+    for i in range(len(self.events_)): n += self.lengthString(self.events_[i].ByteSize())
     if (self.has_timeout_seconds_): n += 9
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.events_)
-    for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSizePartial())
+    for i in range(len(self.events_)): n += self.lengthString(self.events_[i].ByteSizePartial())
     if (self.has_timeout_seconds_): n += 9
     return n
 
@@ -5379,7 +5416,7 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_timeout_seconds()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.events_)):
+    for i in range(len(self.events_)):
       out.putVarInt32(10)
       out.putVarInt32(self.events_[i].ByteSize())
       self.events_[i].OutputUnchecked(out)
@@ -5388,7 +5425,7 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
       out.putDouble(self.timeout_seconds_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.events_)):
+    for i in range(len(self.events_)):
       out.putVarInt32(10)
       out.putVarInt32(self.events_[i].ByteSizePartial())
       self.events_[i].OutputPartial(out)
@@ -5410,7 +5447,7 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5429,7 +5466,7 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kevents = 1
   ktimeout_seconds = 2
@@ -5477,7 +5514,7 @@ class PollReply(_ExtendableProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.events_size()): self.add_events().CopyFrom(x.events(i))
+    for i in range(x.events_size()): self.add_events().CopyFrom(x.events(i))
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -5497,7 +5534,7 @@ class PollReply(_ExtendableProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.events_)
-    for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSize())
+    for i in range(len(self.events_)): n += self.lengthString(self.events_[i].ByteSize())
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n
@@ -5505,7 +5542,7 @@ class PollReply(_ExtendableProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.events_)
-    for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSizePartial())
+    for i in range(len(self.events_)): n += self.lengthString(self.events_[i].ByteSizePartial())
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -5518,7 +5555,7 @@ class PollReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.events_)):
+    for i in range(len(self.events_)):
       out.putVarInt32(18)
       out.putVarInt32(self.events_[i].ByteSize())
       self.events_[i].OutputUnchecked(out)
@@ -5529,7 +5566,7 @@ class PollReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.events_)):
+    for i in range(len(self.events_)):
       out.putVarInt32(18)
       out.putVarInt32(self.events_[i].ByteSizePartial())
       self.events_[i].OutputPartial(out)
@@ -5551,7 +5588,7 @@ class PollReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5573,7 +5610,7 @@ class PollReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kevents = 2
 
@@ -5631,7 +5668,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_name()): self.set_name(x.name())
-    for i in xrange(x.address_families_size()): self.add_address_families(x.address_families(i))
+    for i in range(x.address_families_size()): self.add_address_families(x.address_families(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -5654,7 +5691,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.name_))
     n += 1 * len(self.address_families_)
-    for i in xrange(len(self.address_families_)): n += self.lengthVarInt64(self.address_families_[i])
+    for i in range(len(self.address_families_)): n += self.lengthVarInt64(self.address_families_[i])
     return n + 1
 
   def ByteSizePartial(self):
@@ -5663,7 +5700,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.name_))
     n += 1 * len(self.address_families_)
-    for i in xrange(len(self.address_families_)): n += self.lengthVarInt64(self.address_families_[i])
+    for i in range(len(self.address_families_)): n += self.lengthVarInt64(self.address_families_[i])
     return n
 
   def Clear(self):
@@ -5673,7 +5710,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.name_)
-    for i in xrange(len(self.address_families_)):
+    for i in range(len(self.address_families_)):
       out.putVarInt32(16)
       out.putVarInt32(self.address_families_[i])
 
@@ -5681,7 +5718,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_):
       out.putVarInt32(10)
       out.putPrefixedString(self.name_)
-    for i in xrange(len(self.address_families_)):
+    for i in range(len(self.address_families_)):
       out.putVarInt32(16)
       out.putVarInt32(self.address_families_[i])
 
@@ -5696,7 +5733,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5713,7 +5750,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kaddress_families = 2
@@ -5830,9 +5867,9 @@ class ResolveReply(_ExtendableProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.packed_address_size()): self.add_packed_address(x.packed_address(i))
+    for i in range(x.packed_address_size()): self.add_packed_address(x.packed_address(i))
     if (x.has_canonical_name()): self.set_canonical_name(x.canonical_name())
-    for i in xrange(x.aliases_size()): self.add_aliases(x.aliases(i))
+    for i in range(x.aliases_size()): self.add_aliases(x.aliases(i))
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -5855,10 +5892,10 @@ class ResolveReply(_ExtendableProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.packed_address_)
-    for i in xrange(len(self.packed_address_)): n += self.lengthString(len(self.packed_address_[i]))
+    for i in range(len(self.packed_address_)): n += self.lengthString(len(self.packed_address_[i]))
     if (self.has_canonical_name_): n += 1 + self.lengthString(len(self.canonical_name_))
     n += 1 * len(self.aliases_)
-    for i in xrange(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
+    for i in range(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n
@@ -5866,10 +5903,10 @@ class ResolveReply(_ExtendableProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.packed_address_)
-    for i in xrange(len(self.packed_address_)): n += self.lengthString(len(self.packed_address_[i]))
+    for i in range(len(self.packed_address_)): n += self.lengthString(len(self.packed_address_[i]))
     if (self.has_canonical_name_): n += 1 + self.lengthString(len(self.canonical_name_))
     n += 1 * len(self.aliases_)
-    for i in xrange(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
+    for i in range(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -5884,13 +5921,13 @@ class ResolveReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.packed_address_)):
+    for i in range(len(self.packed_address_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.packed_address_[i])
     if (self.has_canonical_name_):
       out.putVarInt32(26)
       out.putPrefixedString(self.canonical_name_)
-    for i in xrange(len(self.aliases_)):
+    for i in range(len(self.aliases_)):
       out.putVarInt32(34)
       out.putPrefixedString(self.aliases_[i])
     if _extension_runtime:
@@ -5900,13 +5937,13 @@ class ResolveReply(_ExtendableProtocolMessage):
     if _extension_runtime:
       extensions = self._ListExtensions()
       extension_index = 0
-    for i in xrange(len(self.packed_address_)):
+    for i in range(len(self.packed_address_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.packed_address_[i])
     if (self.has_canonical_name_):
       out.putVarInt32(26)
       out.putPrefixedString(self.canonical_name_)
-    for i in xrange(len(self.aliases_)):
+    for i in range(len(self.aliases_)):
       out.putVarInt32(34)
       out.putPrefixedString(self.aliases_[i])
     if _extension_runtime:
@@ -5930,7 +5967,7 @@ class ResolveReply(_ExtendableProtocolMessage):
           continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -5957,7 +5994,7 @@ class ResolveReply(_ExtendableProtocolMessage):
     _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpacked_address = 2
   kcanonical_name = 3

@@ -67,15 +67,6 @@ final class CloudStorageWriteClient extends CloudStorageClient {
     }
     $headers = array_merge($headers, $token_header);
 
-    if (!ini_get('google_app_engine.enable_additional_cloud_storage_headers')) {
-      foreach (static::$METADATA_HEADERS as $key) {
-        // Leave Content-Type since it has been supported.
-        if ($key != 'Content-Type') {
-          unset($this->context_options[$key]);
-        }
-      }
-    }
-
     foreach (static::$METADATA_HEADERS as $key) {
       if (array_key_exists($key, $this->context_options)) {
         $headers[$key] = $this->context_options[$key];

@@ -25,12 +25,14 @@ import os.path
 import threading
 
 import google
-import webapp2
+
+from google.appengine.tools.devappserver2.admin import admin_request_handler
 
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), 'assets')
+JS_TEMPLATES_PATH = os.path.join(os.path.dirname(__file__), 'templates')
 
 
-class StaticFileHandler(webapp2.RequestHandler):
+class StaticFileHandler(admin_request_handler.AdminRequestHandler):
   """A request handler for returning static files."""
 
   _asset_name_to_path = None
@@ -53,6 +55,7 @@ class StaticFileHandler(webapp2.RequestHandler):
     Args:
       asset_name: The name of the static asset to serve. Must be in ASSETS_PATH.
     """
+    super(StaticFileHandler, self).get(asset_name)
     with self._asset_name_to_path_lock:
       if self._asset_name_to_path is None:
         self._initialize_asset_map()
@@ -74,4 +77,23 @@ class StaticFileHandler(webapp2.RequestHandler):
         self.response.out.write(data)
     else:
       self.response.set_status(404)
+
+
+class JsTemplateHandler(admin_request_handler.AdminRequestHandler):
+  """A request handler returning templated JS files."""
+
+  def get(self, template_name):
+    """Renders and serves a JS file to self.response.
+
+    Args:
+      template_name: The name of the JS template to render and serve. Must be in
+          JS_TEMPLATES_PATH.
+    """
+    if not template_name.endswith('.js'):
+      self.response.set_status(404)
+      return
+
+    context = {'modules': [module for module in self.dispatcher.modules
+                           if module.supports_interactive_commands]}
+    self.response.write(self.render(template_name, context))
 

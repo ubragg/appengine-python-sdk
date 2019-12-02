@@ -16,14 +16,14 @@
 #
 
 
-
-
 """CronInfo tools.
 
 A library for working with CronInfo records, describing cron entries for an
 application. Supports loading the records from yaml.
 """
 
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 
 
@@ -32,6 +32,7 @@ application. Supports loading the records from yaml.
 
 
 import logging
+import os
 import sys
 import traceback
 
@@ -40,23 +41,43 @@ try:
 except ImportError:
   pytz = None
 
-from google.appengine.cron import groc
-from google.appengine.cron import groctimespecification
-from google.appengine.api import appinfo
-from google.appengine.api import validation
-from google.appengine.api import yaml_builder
-from google.appengine.api import yaml_listener
-from google.appengine.api import yaml_object
+
+from google.appengine._internal import six_subset
+
+
+
+if six_subset.PY2:
+  from google.appengine.cron import groc
+  from google.appengine.cron import groctimespecification
+else:
+  groc = None
+  groctimespecification = None
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+else:
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+
 
 _URL_REGEX = r'^/.*$'
 _TIMEZONE_REGEX = r'^.{0,100}$'
-_DESCRIPTION_REGEX = ur'^.{0,499}$'
+_DESCRIPTION_REGEX = r'^.{0,499}$'
 
 
 SERVER_ID_RE_STRING = r'(?!-)[a-z\d\-]{1,63}'
 
 
 SERVER_VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,100}'
+
+
 _VERSION_REGEX = r'^(?:(?:(%s):)?)(%s)$' % (SERVER_ID_RE_STRING,
                                             SERVER_VERSION_RE_STRING)
 
@@ -70,13 +91,16 @@ class GrocValidator(validation.Validator):
     """Validates a schedule."""
     if value is None:
       raise validation.MissingAttribute('schedule must be specified')
-    if not isinstance(value, basestring):
+    if not isinstance(value, six_subset.string_types):
       raise TypeError('schedule must be a string, not \'%r\''%type(value))
-    try:
-      groctimespecification.GrocTimeSpecification(value)
-    except groc.GrocException, e:
-      raise validation.ValidationError('schedule \'%s\' failed to parse: %s'%(
-          value, e.args[0]))
+
+
+    if groc and groctimespecification:
+      try:
+        groctimespecification.GrocTimeSpecification(value)
+      except groc.GrocException as e:
+        raise validation.ValidationError('schedule \'%s\' failed to parse: %s'%(
+            value, e.args[0]))
     return value
 
 
@@ -85,10 +109,7 @@ class TimezoneValidator(validation.Validator):
 
   def Validate(self, value, key=None):
     """Validates a timezone."""
-    if value is None:
-
-      return
-    if not isinstance(value, basestring):
+    if not isinstance(value, six_subset.string_types):
       raise TypeError('timezone must be a string, not \'%r\'' % type(value))
     if pytz is None:
 
@@ -135,7 +156,10 @@ class RetryParameters(validation.Validated):
   """Retry parameters for a single cron job."""
   ATTRIBUTES = {
       JOB_RETRY_LIMIT: validation.Optional(
-          validation.Range(0, None, range_type=int)),
+          validation.Range(minimum=0,
+
+                           maximum=sys.maxsize,
+                           range_type=int)),
       JOB_AGE_LIMIT: validation.Optional(validation.TimeValue()),
       MIN_BACKOFF_SECONDS: validation.Optional(
           validation.Range(0.0, None, range_type=float)),
@@ -151,7 +175,7 @@ class CronEntry(validation.Validated):
   ATTRIBUTES = {
       URL: _URL_REGEX,
       SCHEDULE: GrocValidator(),
-      TIMEZONE: TimezoneValidator(),
+      TIMEZONE: validation.Optional(TimezoneValidator()),
       DESCRIPTION: validation.Optional(_DESCRIPTION_REGEX),
       RETRY_PARAMETERS: validation.Optional(RetryParameters),
       TARGET: validation.Optional(_VERSION_REGEX),

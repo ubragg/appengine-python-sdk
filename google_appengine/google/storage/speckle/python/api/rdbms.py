@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Python DB-API (PEP 249) interface to SQL Service.
 
 http://www.python.org/dev/peps/pep-0249/
@@ -29,7 +27,6 @@ import collections
 import datetime
 import decimal
 import exceptions
-import sys
 import time
 import types
 
@@ -276,7 +273,7 @@ def _ConvertArgsDictToList(statement, args):
   For example, consider the following pyformat string and a mapping used for
   interpolation:
 
-    '%(foo)s '%(bar)s' % {'foo': 1, 'bar': 2}
+    '%(foo)s %(bar)s' % {'foo': 1, 'bar': 2}
 
   Given these parameters, this function would return the following output:
 
@@ -296,6 +293,7 @@ def _ConvertArgsDictToList(statement, args):
   """
   access_logger = _AccessLogger()
   statement % access_logger
+
   return [args[key] for key in access_logger.accessed_keys]
 
 
