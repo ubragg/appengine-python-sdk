@@ -299,6 +299,7 @@ namespace google\appengine_datastore_v3\Query\Filter {
     const IN = 6;
     const EXISTS = 7;
     const CONTAINED_IN_REGION = 8;
+    const NOT_EQUAL = 9;
   }
 }
 namespace google\appengine_datastore_v3\Query {
@@ -1173,6 +1174,27 @@ namespace google\appengine_datastore_v3 {
     public function hasShallow() {
       return isset($this->shallow);
     }
+    public function getReadTimeUs() {
+      if (!isset($this->read_time_us)) {
+        return "0";
+      }
+      return $this->read_time_us;
+    }
+    public function setReadTimeUs($val) {
+      if (is_double($val)) {
+        $this->read_time_us = sprintf('%0.0F', $val);
+      } else {
+        $this->read_time_us = $val;
+      }
+      return $this;
+    }
+    public function clearReadTimeUs() {
+      unset($this->read_time_us);
+      return $this;
+    }
+    public function hasReadTimeUs() {
+      return isset($this->read_time_us);
+    }
     public function clear() {
       $this->clearApp();
       $this->clearKind();
@@ -1202,6 +1224,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearPersistOffset();
       $this->clearDatabaseId();
       $this->clearShallow();
+      $this->clearReadTimeUs();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1315,6 +1338,10 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->shallow)) {
         $res += 3;
+      }
+      if (isset($this->read_time_us)) {
+        $res += 2;
+        $res += $this->lengthVarInt64($this->read_time_us);
       }
       return $res;
     }
@@ -1444,6 +1471,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(344);
         $out->putBoolean($this->shallow);
       }
+      if (isset($this->read_time_us)) {
+        $out->putVarInt32(352);
+        $out->putVarInt64($this->read_time_us);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -1564,6 +1595,9 @@ namespace google\appengine_datastore_v3 {
           case 344:
             $this->setShallow($d->getBoolean());
             break;
+          case 352:
+            $this->setReadTimeUs($d->getVarInt64());
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -1675,6 +1709,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasShallow()) {
         $this->setShallow($x->getShallow());
       }
+      if ($x->hasReadTimeUs()) {
+        $this->setReadTimeUs($x->getReadTimeUs());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1746,6 +1783,8 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->database_id) && $this->database_id !== $x->database_id) return false;
       if (isset($this->shallow) !== isset($x->shallow)) return false;
       if (isset($this->shallow) && $this->shallow !== $x->shallow) return false;
+      if (isset($this->read_time_us) !== isset($x->read_time_us)) return false;
+      if (isset($this->read_time_us) && !$this->integerEquals($this->read_time_us, $x->read_time_us)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1833,6 +1872,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->shallow)) {
         $res .= $prefix . "shallow: " . $this->debugFormatBool($this->shallow) . "\n";
+      }
+      if (isset($this->read_time_us)) {
+        $res .= $prefix . "read_time_us: " . $this->debugFormatInt64($this->read_time_us) . "\n";
       }
       return $res;
     }
@@ -4255,6 +4297,7 @@ namespace google\appengine_datastore_v3\Error {
     const TRY_ALTERNATE_BACKEND = 10;
     const SAFE_TIME_TOO_OLD = 11;
     const RESOURCE_EXHAUSTED = 12;
+    const SNAPSHOT_VERSION_TOO_OLD = 18;
     const NOT_FOUND = 13;
     const ALREADY_EXISTS = 14;
     const FAILED_PRECONDITION = 15;

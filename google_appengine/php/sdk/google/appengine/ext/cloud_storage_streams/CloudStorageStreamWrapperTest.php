@@ -24,8 +24,6 @@
 
 namespace {
 
-use google\appengine\api\cloud_storage\CloudStorageTools;
-
 // Mock Memcache class
 class Memcache {
   // Mock object to validate calls to memcache
@@ -56,6 +54,10 @@ class Memcached {
   }
 }
 
+}  // namespace
+
+namespace google\appengine\api\cloud_storage {
+
 // Mock APC functions for App Identity service.
 function apc_fetch($name, &$success) {
   if ($name == CloudStorageTools::GS_DEFAULT_BUCKET_APC_KEY) {
@@ -70,7 +72,7 @@ function apc_store($name, $value, $ttl) {
   return false;
 }
 
-}  // namespace
+}  // namespace google\appengine\api\cloud_storage
 
 namespace google\appengine\ext\cloud_storage_streams {
 

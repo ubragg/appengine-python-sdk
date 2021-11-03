@@ -179,11 +179,5 @@ final class MemcacheSessionHandler implements \SessionHandlerInterface {
     $handler = new MemcacheSessionHandler($memcacheContainer);
 
     session_set_save_handler($handler, true);
-
-    /**
-     * Set so that it is clear that Memcache is being used for session handling,
-     * as retrieving session.save_handler just returns "user".
-     */
-    session_save_path("Memcache");
   }
 }

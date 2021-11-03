@@ -509,7 +509,7 @@ final class CurlLite {
         $payload = $value;
       } else if (is_array($value)) {
         $payload = http_build_query($value);
-        // TODO: Arrays need to be mulitpart encoded.
+        // TODO: Arrays need to be multipart encoded.
       }
       if (!$this->tryGetRequestHeaderValue(self::CONTENT_TYPE_HEADER, $val)) {
         $header = $this->request->addHeader();

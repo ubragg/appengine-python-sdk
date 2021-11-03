@@ -3,6 +3,6 @@
     "google", 
     "appengine"
   ], 
-  "version": "1.9.87", 
+  "version": "1.9.91", 
   "name": "appengine-python-sdk"
 }
