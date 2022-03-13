@@ -11,8 +11,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ubragg/appengine-python-sdk",
-    packages=setuptools.find_packages(where="google_appengine/google/net"),
-    package_dir={"": "google_appengine/google/net"},
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
