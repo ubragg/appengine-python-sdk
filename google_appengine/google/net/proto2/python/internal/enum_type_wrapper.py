@@ -25,6 +25,7 @@ on proto classes.  For usage, see:
 
 
 
+from builtins import object
 from google.appengine._internal import six
 
 

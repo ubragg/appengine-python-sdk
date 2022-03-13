@@ -26,6 +26,7 @@
 
 
 
+from builtins import object
 class Error(Exception):
   """Base error type for this module."""
   pass

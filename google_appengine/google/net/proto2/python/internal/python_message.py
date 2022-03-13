@@ -38,6 +38,9 @@ this file*.
 
 
 
+from builtins import str
+from builtins import range
+from builtins import object
 from io import BytesIO
 import struct
 import sys
@@ -357,7 +360,7 @@ def _AttachFieldHelpers(cls, field_descriptor):
 
 def _AddClassAttributesForNestedExtensions(descriptor, dictionary):
   extensions = descriptor.extensions_by_name
-  for extension_name, extension_field in extensions.items():
+  for extension_name, extension_field in list(extensions.items()):
     assert extension_name not in dictionary
     dictionary[extension_name] = extension_field
 
@@ -503,7 +506,7 @@ def _AddInitMethod(message_descriptor, cls):
     self._is_present_in_parent = False
     self._listener = message_listener_mod.NullMessageListener()
     self._listener_for_children = _Listener(self)
-    for field_name, field_value in kwargs.items():
+    for field_name, field_value in list(kwargs.items()):
       field = _GetFieldByName(message_descriptor, field_name)
       if field is None:
         raise TypeError('%s() got an unexpected keyword argument "%s"' %
@@ -765,7 +768,7 @@ def _AddPropertiesForNonRepeatedCompositeField(field, cls):
 def _AddPropertiesForExtensions(descriptor, cls):
   """Adds properties for all fields in this protocol message type."""
   extensions = descriptor.extensions_by_name
-  for extension_name, extension_field in extensions.items():
+  for extension_name, extension_field in list(extensions.items()):
     constant_name = extension_name.upper() + '_FIELD_NUMBER'
     setattr(cls, constant_name, extension_field.number)
 
@@ -810,7 +813,7 @@ def _AddListFieldsMethod(message_descriptor, cls):
   """Helper for _AddMessageMethods()."""
 
   def ListFields(self):
-    all_fields = [item for item in self._fields.items() if _IsPresent(item)]
+    all_fields = [item for item in list(self._fields.items()) if _IsPresent(item)]
     all_fields.sort(key = lambda item: item[0].number)
     return all_fields
 
@@ -1305,7 +1308,7 @@ def _AddMergeFromMethod(cls):
 
     fields = self._fields
 
-    for field, value in msg._fields.items():
+    for field, value in list(msg._fields.items()):
       if field.label == LABEL_REPEATED:
         field_value = fields.get(field)
         if field_value is None:

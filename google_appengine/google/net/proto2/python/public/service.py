@@ -33,6 +33,7 @@ and can avoid unnecessary layers of indirection.
 
 
 
+from builtins import object
 class RpcException(Exception):
   """Exception raised on failed blocking RPC method call."""
   pass

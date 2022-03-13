@@ -28,6 +28,7 @@ compiler at compile-time.
 
 
 
+from builtins import object
 from google.net.proto2.python.internal import api_implementation
 
 if api_implementation.Type() == 'cpp':

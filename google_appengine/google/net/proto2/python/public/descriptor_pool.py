@@ -45,6 +45,8 @@ directly instead of this class.
 
 
 
+from builtins import zip
+from builtins import object
 import collections
 import warnings
 
@@ -365,7 +367,7 @@ class DescriptorPool(object):
 
 
 
-    for extension in file_desc.extensions_by_name.values():
+    for extension in list(file_desc.extensions_by_name.values()):
       self._file_desc_by_toplevel_extension[
           extension.full_name] = file_desc
 
@@ -756,9 +758,9 @@ class DescriptorPool(object):
 
       for dependency in built_deps:
         scope.update(self._ExtractSymbols(
-            dependency.message_types_by_name.values()))
+            list(dependency.message_types_by_name.values())))
         scope.update((_PrefixWithDot(enum.full_name), enum)
-                     for enum in dependency.enum_types_by_name.values())
+                     for enum in list(dependency.enum_types_by_name.values()))
 
       for message_type in file_proto.message_type:
         message_desc = self._ConvertMessageDescriptor(
@@ -808,9 +810,9 @@ class DescriptorPool(object):
 
 
     file_desc = self._file_descriptors[file_proto.name]
-    for extension in file_desc.extensions_by_name.values():
+    for extension in list(file_desc.extensions_by_name.values()):
       self._AddExtensionDescriptor(extension)
-    for message_type in file_desc.message_types_by_name.values():
+    for message_type in list(file_desc.message_types_by_name.values()):
       for extension in message_type.extensions:
         self._AddExtensionDescriptor(extension)
 
@@ -1026,7 +1028,7 @@ class DescriptorPool(object):
       self._SetFieldType(field_proto, field_desc, nested_package, scope)
 
     for extension_proto, extension_desc in (
-        zip(desc_proto.extension, main_desc.extensions)):
+        list(zip(desc_proto.extension, main_desc.extensions))):
       extension_desc.containing_type = self._GetTypeFromScope(
           nested_package, extension_proto.extendee, scope)
       self._SetFieldType(extension_proto, extension_desc, nested_package, scope)

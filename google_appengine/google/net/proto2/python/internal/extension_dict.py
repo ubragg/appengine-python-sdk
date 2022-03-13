@@ -19,6 +19,7 @@
 """Contains _ExtensionDict class to represent extensions.
 """
 
+from builtins import object
 from google.net.proto2.python.internal import type_checkers
 from google.net.proto2.python.public.descriptor import FieldDescriptor
 

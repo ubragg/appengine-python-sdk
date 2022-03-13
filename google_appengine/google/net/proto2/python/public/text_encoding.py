@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 """Encoding related utilities."""
+from builtins import chr
+from builtins import range
 import re
 
 from google.appengine._internal import six
@@ -29,14 +31,14 @@ _cescape_chr_to_symbol_map[92] = r'\\'
 
 
 _cescape_unicode_to_str = [chr(i) for i in range(0, 256)]
-for byte, string in _cescape_chr_to_symbol_map.items():
+for byte, string in list(_cescape_chr_to_symbol_map.items()):
   _cescape_unicode_to_str[byte] = string
 
 
 _cescape_byte_to_str = ([r'\%03o' % i for i in range(0, 32)] +
                         [chr(i) for i in range(32, 127)] +
                         [r'\%03o' % i for i in range(127, 256)])
-for byte, string in _cescape_chr_to_symbol_map.items():
+for byte, string in list(_cescape_chr_to_symbol_map.items()):
   _cescape_byte_to_str[byte] = string
 del byte, string
 

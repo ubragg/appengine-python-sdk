@@ -20,6 +20,7 @@
 
 
 
+from builtins import object
 import warnings
 
 

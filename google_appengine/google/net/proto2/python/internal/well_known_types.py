@@ -25,9 +25,13 @@ This files defines well known classes which need extra maintenance including:
   - Struct
   - Timestamp
 """
+from __future__ import division
 
 
 
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import calendar
 from datetime import datetime
 from datetime import timedelta
@@ -113,10 +117,10 @@ class Timestamp(object):
       return result + 'Z'
     if (nanos % 1e6) == 0:
 
-      return result + '.%03dZ' % (nanos / 1e6)
+      return result + '.%03dZ' % (old_div(nanos, 1e6))
     if (nanos % 1e3) == 0:
 
-      return result + '.%06dZ' % (nanos / 1e3)
+      return result + '.%06dZ' % (old_div(nanos, 1e3))
 
     return result + '.%09dZ' % nanos
 
@@ -269,10 +273,10 @@ class Duration(object):
       return result + 's'
     if (nanos % 1e6) == 0:
 
-      return result + '.%03ds' % (nanos / 1e6)
+      return result + '.%03ds' % (old_div(nanos, 1e6))
     if (nanos % 1e3) == 0:
 
-      return result + '.%06ds' % (nanos / 1e3)
+      return result + '.%06ds' % (old_div(nanos, 1e3))
 
     return result + '.%09ds' % nanos
 
@@ -762,7 +766,7 @@ class Struct(object):
     return iter(self.fields)
 
   def keys(self):
-    return self.fields.keys()
+    return list(self.fields.keys())
 
   def values(self):
     return [self[key] for key in self]
@@ -785,7 +789,7 @@ class Struct(object):
     return self.fields[key].struct_value
 
   def update(self, dictionary):
-    for key, value in dictionary.items():
+    for key, value in list(dictionary.items()):
       _SetStructValue(self.fields[key], value)
 
 collections_abc.MutableMapping.register(Struct)

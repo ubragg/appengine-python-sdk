@@ -30,6 +30,9 @@ Simple usage example::
 
 
 
+from builtins import next
+from builtins import str
+from builtins import object
 import encodings.raw_unicode_escape
 import encodings.unicode_escape
 import io
@@ -1726,7 +1729,7 @@ def _ParseAbstractInteger(text, is_long=False):
 
 
     if is_long:
-      return long(text, 0)
+      return int(text, 0)
     else:
       return int(text, 0)
   except ValueError:

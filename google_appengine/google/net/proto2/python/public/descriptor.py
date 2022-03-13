@@ -23,6 +23,7 @@ file, in types that make this information accessible in Python.
 
 
 
+from builtins import object
 import threading
 import warnings
 from google.appengine._internal import six

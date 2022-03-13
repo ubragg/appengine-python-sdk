@@ -33,6 +33,7 @@ TYPE_TO_DESERIALIZE_METHOD: A dictionary with field types and deserialization
 
 
 
+from builtins import object
 try:
   import ctypes
 except Exception:
@@ -248,13 +249,13 @@ class Uint32ValueChecker(IntValueChecker):
 class Int64ValueChecker(IntValueChecker):
   _MIN = -(1 << 63)
   _MAX = (1 << 63) - 1
-  _TYPE = long
+  _TYPE = int
 
 
 class Uint64ValueChecker(IntValueChecker):
   _MIN = 0
   _MAX = (1 << 64) - 1
-  _TYPE = long
+  _TYPE = int
 
 
 

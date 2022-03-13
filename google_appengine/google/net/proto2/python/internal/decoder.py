@@ -151,8 +151,8 @@ def _SignedVarintDecoder(bits, result_type):
 
 
 
-_DecodeVarint = _VarintDecoder((1 << 64) - 1, long)
-_DecodeSignedVarint = _SignedVarintDecoder(64, long)
+_DecodeVarint = _VarintDecoder((1 << 64) - 1, int)
+_DecodeSignedVarint = _SignedVarintDecoder(64, int)
 
 
 _DecodeVarint32 = _VarintDecoder((1 << 32) - 1, int)

@@ -27,6 +27,7 @@ my_proto_instance = message_classes['some.proto.package.MessageName']()
 
 
 
+from builtins import object
 from google.net.proto2.python.internal import api_implementation
 from google.net.proto2.python.public import descriptor_pool
 from google.net.proto2.python.public import message
@@ -102,7 +103,7 @@ class MessageFactory(object):
     result = {}
     for file_name in files:
       file_desc = self.pool.FindFileByName(file_name)
-      for desc in file_desc.message_types_by_name.values():
+      for desc in list(file_desc.message_types_by_name.values()):
         result[desc.full_name] = self.GetPrototype(desc)
 
 
@@ -114,7 +115,7 @@ class MessageFactory(object):
 
 
 
-      for extension in file_desc.extensions_by_name.values():
+      for extension in list(file_desc.extensions_by_name.values()):
         if extension.containing_type not in self._classes:
           self.GetPrototype(extension.containing_type)
         extended_class = self._classes[extension.containing_type]
